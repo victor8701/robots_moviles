@@ -25,12 +25,12 @@
       <link name="body">
         <visual name="visual">
           <geometry>
-            <mesh><uri>file://meshes/escenario3.obj</uri><scale>0.01 0.01 0.01</scale></mesh>
+            <mesh><uri>file:///home/ubuntu20/Ubuntu20noetic_ws/src/robots_moviles/navegacion_geometrica/worlds/meshes/escenario3.obj</uri><scale>0.01 0.01 0.01</scale></mesh>
           </geometry>
         </visual>
         <collision name="collision">
           <geometry>
-            <mesh><uri>file://meshes/escenario3.obj</uri><scale>0.01 0.01 0.01</scale></mesh>
+            <mesh><uri>file:///home/ubuntu20/Ubuntu20noetic_ws/src/robots_moviles/navegacion_geometrica/worlds/meshes/escenario3.obj</uri><scale>0.01 0.01 0.01</scale></mesh>
           </geometry>
           <laser_retro>0.9</laser_retro>
           <surface>
