@@ -30,3 +30,5 @@ install/
 .project
 .settings/
 .cproject
+*:Zone.Identifier
+
