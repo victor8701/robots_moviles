@@ -1,0 +1,16 @@
+Demo 2
+Terminal 1: Abrir simulacion
+roslaunch robots_moviles turtlebot3_escenario1.launch
+
+Terminal 2: Abrir rviz (con la configuracion guardada)
+rviz -d rviz/config.rviz
+
+Terminal 3: Teleoperacion
+roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
+
+Terminal 4: SLAM
+roslaunch turtlebot3_slam turtlebot3_gmapping.launch
+
+Terminal 5: Guardar mapa
+rosrun map_server map_saver -f nombreDelMapa
+

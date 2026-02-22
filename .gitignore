@@ -1,0 +1,32 @@
+# ROS
+devel/
+build/
+install/
+.catkin_workspace
+.item_config
+
+# Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary files
+*~
+*.swp
+*.log
+
+# C++ build artifacts
+*.o
+*.so
+*.a
+
+# Maps (optional, but requested often)
+# *.pgm
+# *.yaml
+
+# Other
+.vscode/
+.idea/
+.project
+.settings/
+.cproject
