@@ -27,8 +27,8 @@ rosrun map_server map_server nombreDelMapa.yaml
 Terminal 4: AMCL
 roslaunch turtlebot3_navigation amcl.launch initial_pose_x:=5.37 initial_pose_y:=-4.12 initial_pose_a:=3.14
 
-Terminal 5: Teleoperacion
-roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
+Terminal 5: move_base
+roslaunch turtlebot3_navigation move_base.launch
 
 Terminal 6: Petición de pose
 rostopic pub /move_base_simple/goal geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "map"}, pose: {position: {x: 4.5, y: 1.3, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}'
