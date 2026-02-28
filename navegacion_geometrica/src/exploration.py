@@ -8,18 +8,22 @@ import numpy as np
 import cv2
 import tf2_ros
 import math
+import time # Importar el módulo time
 
 # Variables globales
 map_data = None
 tf_buffer = None
 lista_negra = []  # Almacena las coordenadas (x, y) de las fronteras inalcanzables
 
+# --- Temporizador ---
+start_time = None # Variable para almacenar el tiempo de inicio
+
 def map_callback(map_msg):
     global map_data
     map_data = map_msg
 
 def select_and_publish_goal():
-    global map_data, tf_buffer, lista_negra
+    global map_data, tf_buffer, lista_negra, start_time
     
     if map_data is None:
         return
@@ -71,6 +75,15 @@ def select_and_publish_goal():
         total_cells = width * height
         free_cells = np.sum(mapa == 0)
         print("Porcentaje de mapa libre descubierto: {:.2f}%".format((free_cells/float(total_cells))*100))
+        
+        # Calcular y mostrar el tiempo transcurrido
+        if start_time is not None:
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            minutes = int(elapsed_time // 60)
+            seconds = int(elapsed_time % 60)
+            print("Tiempo total de exploración del mapa: {} minutos y {} segundos.".format(minutes, seconds))
+        
         rospy.signal_shutdown("Exploración Completada")
         return
 
@@ -162,9 +175,18 @@ if __name__ == '__main__':
         map_subscriber = rospy.Subscriber('/map', OccupancyGrid, map_callback)
         rate = rospy.Rate(1) # Evaluar a 1 Hz
 
+        start_time = time.time() # Registrar el tiempo de inicio aquí
+
         while not rospy.is_shutdown():
             select_and_publish_goal()
             rate.sleep()
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Nodo de exploración detenido.")
+        # Asegurarse de que el tiempo se registre incluso si se interrumpe manualmente
+        if start_time is not None:
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            minutes = int(elapsed_time // 60)
+            seconds = int(elapsed_time % 60)
+            rospy.loginfo("Exploración interrumpida. Tiempo total: {} minutos y {} segundos.".format(minutes, seconds))
