@@ -11,6 +11,7 @@ import numpy as np
 import cv2
 import tf2_ros
 import math
+import time # Importar el módulo time
 
 # ---------------------------------------------------------------------------
 # Variables globales
@@ -22,13 +23,20 @@ lista_negra = []  # Almacena las coordenadas (x, y) de las fronteras inalcanzabl
 # --- Detección reactiva de obstáculos ---
 obstacle_detected = False          # Flag compartido entre hilos
 goal_client_global = None          # Referencia al cliente de move_base activo
+current_goal_pos  = None           # (x, y) del goal activo, accesible desde scan_callback
+obstacle_hits     = []             # Lista de [x, y, count] de goals con obstáculos repetidos
 
 OBSTACLE_THRESHOLD = 0.35          # Distancia mínima frontal (metros)
 ESCAPE_LINEAR  = -0.10             # Velocidad lineal de escape (retroceso)
 ESCAPE_ANGULAR =  0.50             # Velocidad angular de escape (giro)
+OBSTACLE_REPEAT_RADIUS   = 0.50    # Radio (m) para considerar dos detecciones como el mismo obstáculo
+OBSTACLE_MAX_HITS        = 3       # Nº de detecciones del mismo obstáculo para intentar aproximación lateral
+OBSTACLE_APPROACH_OFFSET = 0.80    # Distancia (m) del desvío lateral al aproximarse a un goal repetidamente bloqueado
 
 cmd_vel_pub = None                 # Publicador /cmd_vel (inicializado en main)
 
+# --- Temporizador ---
+start_time = None # Variable para almacenar el tiempo de inicio
 
 # ---------------------------------------------------------------------------
 # Maniobra de escape — se ejecuta en un hilo separado para no bloquear /scan
@@ -86,12 +94,34 @@ def scan_callback(scan_msg):
         )
         obstacle_detected = True
 
+        # Registrar detección para posible blacklist por repetición
+        if current_goal_pos is not None:
+            _register_obstacle_hit(current_goal_pos)
+
         # Cancelar goal activo → move_base deja de publicar /cmd_vel
         if goal_client_global is not None:
             goal_client_global.cancel_goal()
 
         # Lanzar la maniobra en un hilo separado para no bloquear el callback
         threading.Thread(target=execute_escape, daemon=True).start()
+
+
+# ---------------------------------------------------------------------------
+# Registro de obstáculos repetidos — a partir de OBSTACLE_MAX_HITS el robot
+# intentará aproximarse al mismo goal desde un ángulo lateral
+# ---------------------------------------------------------------------------
+def _register_obstacle_hit(goal_pos):
+    global obstacle_hits
+    gx, gy = goal_pos
+    for entry in obstacle_hits:
+        if math.sqrt((gx - entry[0])**2 + (gy - entry[1])**2) < OBSTACLE_REPEAT_RADIUS:
+            entry[2] += 1
+            rospy.logwarn("Obstáculo repetido en goal ({:.2f}, {:.2f}): {}/{} detecciones.".format(
+                gx, gy, entry[2], OBSTACLE_MAX_HITS))
+            if entry[2] >= OBSTACLE_MAX_HITS:
+                rospy.logwarn("Máximo alcanzado. El próximo intento usará aproximación lateral.")
+            return
+    obstacle_hits.append([gx, gy, 1])
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +136,7 @@ def map_callback(map_msg):
 # Selección y envío de objetivo de exploración
 # ---------------------------------------------------------------------------
 def select_and_publish_goal():
-    global map_data, tf_buffer, lista_negra, goal_client_global
+    global map_data, tf_buffer, lista_negra, goal_client_global, current_goal_pos, start_time
 
     # No procesar mientras se resuelve un obstáculo
     if obstacle_detected:
@@ -163,6 +193,15 @@ def select_and_publish_goal():
         total_cells = width * height
         free_cells = np.sum(mapa == 0)
         print("Porcentaje de mapa libre descubierto: {:.2f}%".format((free_cells/float(total_cells))*100))
+        
+        # Calcular y mostrar el tiempo transcurrido
+        if start_time is not None:
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            minutes = int(elapsed_time // 60)
+            seconds = int(elapsed_time % 60)
+            print("Tiempo total de exploración del mapa: {} minutos y {} segundos.".format(minutes, seconds))
+        
         rospy.signal_shutdown("Exploración Completada")
         return
 
@@ -206,8 +245,29 @@ def select_and_publish_goal():
 
     if mejor_objetivo_x is None:
         rospy.logwarn("Fronteras detectadas pero todas están en la lista negra o son inalcanzables.")
+        if lista_negra:
+            rospy.logwarn("Limpiando lista negra para reintentar exploración desde nuevas posiciones...")
+            lista_negra.clear()
+            obstacle_hits.clear()
         map_data = None
         return
+
+    # Si este goal ha acumulado demasiados obstáculos, aplicar un desvío lateral
+    # para que el robot intente acceder a la zona desde otro ángulo
+    for entry in obstacle_hits:
+        if math.sqrt((mejor_objetivo_x - entry[0])**2 + (mejor_objetivo_y - entry[1])**2) < OBSTACLE_REPEAT_RADIUS:
+            if entry[2] >= OBSTACLE_MAX_HITS:
+                dx = mejor_objetivo_x - robot_x
+                dy = mejor_objetivo_y - robot_y
+                dist = math.sqrt(dx**2 + dy**2)
+                if dist > 0.01:
+                    # Vector perpendicular (90° a la izquierda del vector robot→frontera)
+                    px, py = -dy / dist, dx / dist
+                    mejor_objetivo_x += px * OBSTACLE_APPROACH_OFFSET
+                    mejor_objetivo_y += py * OBSTACLE_APPROACH_OFFSET
+                    rospy.loginfo("Aproximación lateral aplicada: nuevo goal ({:.2f}, {:.2f}).".format(
+                        mejor_objetivo_x, mejor_objetivo_y))
+            break
 
     print('Frontera seleccionada a {:.2f}m. Enviando objetivo...'.format(mejor_distancia))
 
@@ -215,8 +275,9 @@ def select_and_publish_goal():
     goal_client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
     goal_client.wait_for_server()
 
-    # Exponer cliente al callback de /scan para que pueda cancelarlo
+    # Exponer cliente y goal al callback de /scan para que pueda cancelarlo
     goal_client_global = goal_client
+    current_goal_pos   = (mejor_objetivo_x, mejor_objetivo_y)
 
     goal = MoveBaseGoal()
     goal.target_pose.header.frame_id = "map"
@@ -248,6 +309,7 @@ def select_and_publish_goal():
 
     # Limpiar mapa para procesar uno nuevo en la siguiente iteración
     goal_client_global = None
+    current_goal_pos   = None
     map_data = None
 
 if __name__ == '__main__':
@@ -267,9 +329,18 @@ if __name__ == '__main__':
 
         rate = rospy.Rate(1) # Evaluar a 1 Hz
 
+        start_time = time.time() # Registrar el tiempo de inicio aquí
+
         while not rospy.is_shutdown():
             select_and_publish_goal()
             rate.sleep()
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Nodo de exploración detenido.")
+        # Asegurarse de que el tiempo se registre incluso si se interrumpe manualmente
+        if start_time is not None:
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            minutes = int(elapsed_time // 60)
+            seconds = int(elapsed_time % 60)
+            rospy.loginfo("Exploración interrumpida. Tiempo total: {} minutos y {} segundos.".format(minutes, seconds))

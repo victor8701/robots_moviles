@@ -54,6 +54,6 @@ roslaunch turtlebot3_navigation move_base.launch
 Terminal 5: Ejecución del Algoritmo de Exploración
 rosrun robots_moviles exploration.py
 
-Compilar:
-catkin_make --pkg robots_moviles
+Compilar :
+cd ~/Ubuntu20noetic_ws && catkin_make --pkg robots_moviles
 
