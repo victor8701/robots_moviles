@@ -252,6 +252,10 @@ def select_and_publish_goal():
         map_data = None
         return
 
+    # Guardar la frontera original antes de aplicar cualquier desvío
+    frontera_original_x = mejor_objetivo_x
+    frontera_original_y = mejor_objetivo_y
+
     # Si este goal ha acumulado demasiados obstáculos, aplicar un desvío lateral
     # para que el robot intente acceder a la zona desde otro ángulo
     for entry in obstacle_hits:
@@ -296,7 +300,7 @@ def select_and_publish_goal():
     if not finished_within_time:
         print("Timeout: El robot se atascó o tardó demasiado. Cancelando y añadiendo a la lista negra...")
         goal_client.cancel_goal()
-        lista_negra.append((mejor_objetivo_x, mejor_objetivo_y))
+        lista_negra.append((frontera_original_x, frontera_original_y))
     else:
         if state == actionlib.GoalStatus.SUCCEEDED:
             print('¡Frontera alcanzada con éxito! Descubriendo nueva zona...')
@@ -305,7 +309,7 @@ def select_and_publish_goal():
             rospy.loginfo("Goal cancelado por detección de obstáculo. Esperando maniobra de escape...")
         else:
             print('Fallo de move_base (probablemente obstáculo invisible o ruta bloqueada). Añadiendo a la lista negra...')
-            lista_negra.append((mejor_objetivo_x, mejor_objetivo_y))
+            lista_negra.append((frontera_original_x, frontera_original_y))
 
     # Limpiar mapa para procesar uno nuevo en la siguiente iteración
     goal_client_global = None
