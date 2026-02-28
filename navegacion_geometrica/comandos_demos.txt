@@ -14,6 +14,8 @@ roslaunch turtlebot3_slam turtlebot3_gmapping.launch
 Terminal 5: Guardar mapa
 rosrun map_server map_saver -f nombreDelMapa
 
+------------------------------------------------------------------------------------
+
 Demo 3:
 Terminal 1: Abrir simulacion
 roslaunch robots_moviles turtlebot3_escenario1.launch
@@ -32,3 +34,26 @@ roslaunch turtlebot3_navigation move_base.launch
 
 Terminal 6: Petición de pose
 rostopic pub /move_base_simple/goal geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "map"}, pose: {position: {x: 4.5, y: 1.3, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}'
+
+------------------------------------------------------------------------------------
+
+Exploración Autónoma:
+
+Terminal 1: Abrir simulacion
+roslaunch robots_moviles turtlebot3_escenario1.launch
+
+Terminal 2: Abrir rviz
+rviz -d $(rospack find robots_moviles)/rviz/config.rviz
+
+Terminal 3: Generador de mapa (SLAM)
+roslaunch turtlebot3_slam turtlebot3_gmapping.launch
+
+Terminal 4: Navegación Automática (Move Base)
+roslaunch turtlebot3_navigation move_base.launch
+
+Terminal 5: Ejecución del Algoritmo de Exploración
+rosrun robots_moviles exploration.py
+
+Compilar:
+catkin_make --pkg robots_moviles
+
