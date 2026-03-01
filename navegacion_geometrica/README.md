@@ -36,3 +36,13 @@ El sistema fue evaluado en 4 escenarios de distinta complejidad. Los resultados 
 | **Escenario 2** | 7 min 13 seg | 99.76% | *Mapeo casi perfecto.* |
 | **Escenario 3** | 7 min 50 seg | 91.57% | *Alta complejidad de pasillos.* |
 | **Estudio** | 7 min 02 seg | 99.85% | *Excelente navegación inter-habitaciones.* |
+
+## 3.1 Resultados Experimentales con script de sensores (Victor)
+
+| Escenario | Tiempo de Exploración | Porcentaje Descubierto |
+| :--- | :--- | :--- | :--- |
+| **Escenario 1** | 2 min 13 seg | 99.93% | 
+| **Escenario 2** | 5 min 34 seg | 99.35% | 
+| **Escenario 3** | 19 min 21 seg | 99.35% | 
+| **Estudio** | 5 min 28 seg | 100.03% | 
+
