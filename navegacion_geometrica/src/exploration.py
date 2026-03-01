@@ -10,6 +10,7 @@ import tf2_ros
 import math
 import time 
 
+
 # Variables globales
 map_data = None
 tf_buffer = None
@@ -17,7 +18,6 @@ lista_negra = []  # Almacena las coordenadas (x, y) de las fronteras inalcanzabl
 
 # --- Temporizador ---
 start_time = None # Variable para almacenar el tiempo de inicio
-
 
 def map_callback(map_msg):
     global map_data
