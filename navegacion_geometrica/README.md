@@ -40,7 +40,7 @@ El sistema fue evaluado en 4 escenarios de distinta complejidad. Los resultados 
 ## 3.1 Resultados Experimentales con script de sensores (Victor)
 
 | Escenario | Tiempo de Exploración | Porcentaje Descubierto |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- |
 | **Escenario 1** | 2 min 13 seg | 99.93% | 
 | **Escenario 2** | 5 min 34 seg | 99.35% | 
 | **Escenario 3** | 19 min 21 seg | 99.35% | 
