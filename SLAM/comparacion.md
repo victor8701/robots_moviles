@@ -7,7 +7,7 @@
 
 ## Escenario de referencia: Ground Truth
 
-El entorno de simulaciÃ³n es un pasillo cuadrado de 10Ã—10 metros con **88 features** (puntos rojos) distribuidos por las paredes. La trayectoria del robot sigue el perÃ­metro â€” en rojo.
+El entorno de simulaciÃ³n es un pasillo cuadrado de 10Ã--10 metros con **88 features** (puntos rojos) distribuidos por las paredes. La trayectoria del robot sigue el perÃ­metro â€” en rojo.
 
 ![Ground Truth â€” 88 features reales en el entorno](images/1%20-%20NN%20-%20Figure1.png)
 
@@ -20,7 +20,7 @@ La tarea del algoritmo EKF-SLAM es estimar la posiciÃ³n del robot **y** constr
 ### DescripciÃ³n
 Para cada observaciÃ³n `i`, busca el feature del mapa con la **menor distancia de Mahalanobis** y lo empareja si estÃ¡ dentro del gate de compatibilidad individual (umbral chiÂ²). No tiene en cuenta las demÃ¡s observaciones.
 
-- **Complejidad:** O(m Ã— n) â€” muy rÃ¡pido
+- **Complejidad:** O(m Ã-- n) â€” muy rÃ¡pido
 - **FilosofÃ­a:** *"Emparejo con el mÃ¡s cercano, aunque haya ambigÃ¼edad"*
 
 ### Mapa final (Step 44)
@@ -59,7 +59,7 @@ if length(compatible_features) == 1
 end
 ```
 
-- **Complejidad:** O(m Ã— n) â€” igual de rÃ¡pido que NN
+- **Complejidad:** O(m Ã-- n) â€” igual de rÃ¡pido que NN
 - **FilosofÃ­a:** *"Si hay ambigÃ¼edad, no me arriesgo"*
 
 ### Mapa final (Step 44)
@@ -159,4 +159,5 @@ Cuando hay ambigÃ¼edad individual (lo que SINGLES descarta, lo que NN resuelve
 ---
 
 *Basado en: J. Neira & J.D. TardÃ³s, "Data Association in Stochastic Mapping Using the Joint Compatibility Test", IEEE Transactions on Robotics and Automation, 2001.*
+
 
