@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>navegacion_topologica</name>
+  <version>1.0.0</version>
+  <description>
+    Topological Navigation System for Mobile Robots.
+
+    Generates topological maps from geometric maps using skeletonization
+    and implements A* path planning at the topological level.
+  </description>
+
+  <maintainer email="robotics@university.edu">Robotics Team</maintainer>
+  <license>BSD</license>
+
+  <author email="robotics@university.edu">Robotics Lab</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Package dependencies -->
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>move_base_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>actionlib</depend>
+
+  <!-- Build dependencies -->
+  <build_require>catkin</build_require>
+
+  <!-- Run dependencies -->
+  <exec_depend>move_base</exec_depend>
+  <exec_depend>rviz</exec_depend>
+
+  <!-- Python dependencies (system packages) -->
+  <!-- Install with: pip install numpy scipy scikit-image opencv-python pyyaml -->
+
+  <export>
+  </export>
+</package>

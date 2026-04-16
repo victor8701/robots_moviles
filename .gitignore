@@ -32,4 +32,5 @@ install/
 .cproject
 *:Zone.Identifier
 log/
+doc/
 
