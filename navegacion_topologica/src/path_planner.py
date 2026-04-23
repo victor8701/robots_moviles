@@ -186,9 +186,10 @@ class TopologicalPathPlanner:
         res = self.graph['metadata']['resolution_m_per_pixel']
         origin_x = self.graph['metadata']['origin_x']
         origin_y = self.graph['metadata']['origin_y']
+        height = self.graph['metadata'].get('height', 384)
 
         x_meters = origin_x + node['x_pixel'] * res
-        y_meters = origin_y + node['y_pixel'] * res
+        y_meters = origin_y + (height - node['y_pixel']) * res
 
         return {
             'x_pixel': node['x_pixel'],

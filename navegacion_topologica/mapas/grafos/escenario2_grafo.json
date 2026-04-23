@@ -125,6 +125,8 @@
     "map_image": "mapa_escenario2.pgm",
     "resolution_m_per_pixel": 0.05,
     "origin_x": -10.0,
-    "origin_y": -10.0
+    "origin_y": -10.0,
+    "width": 384,
+    "height": 384
   }
 }

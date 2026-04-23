@@ -8,6 +8,8 @@ principal (8 nodos, bien conectado). Abrir 4 terminales.
 ## Terminal 1 — Gazebo
 
 ```bash
+source /opt/ros/noetic/setup.bash
+source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash
 export TURTLEBOT3_MODEL=burger
 roslaunch robots_moviles turtlebot3_escenario2.launch
 ```
@@ -15,6 +17,8 @@ roslaunch robots_moviles turtlebot3_escenario2.launch
 ## Terminal 2 — Navigation stack (mapa + AMCL + move_base)
 
 ```bash
+source /opt/ros/noetic/setup.bash
+source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash
 export TURTLEBOT3_MODEL=burger
 roslaunch turtlebot3_navigation turtlebot3_navigation.launch \
   map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario2.yaml
@@ -23,6 +27,7 @@ roslaunch turtlebot3_navigation turtlebot3_navigation.launch \
 ## Terminal 3 — Visualizador del grafo topológico en RViz
 
 ```bash
+source /opt/ros/noetic/setup.bash
 source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash
 rosrun navegacion_topologica graph_visualizer.py \
   $(rospack find navegacion_topologica)/mapas/grafos/escenario2_grafo.json
@@ -36,6 +41,7 @@ Añadir en RViz los topics:
 ## Terminal 4 — Navegación topológica interactiva
 
 ```bash
+source /opt/ros/noetic/setup.bash
 source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash
 rosrun navegacion_topologica topological_navigation.py \
   $(rospack find navegacion_topologica)/mapas/grafos/escenario2_grafo.json

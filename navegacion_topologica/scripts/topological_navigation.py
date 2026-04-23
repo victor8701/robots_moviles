@@ -38,6 +38,7 @@ class TopologicalNavigator:
         self.resolution = self.planner.graph['metadata']['resolution_m_per_pixel']
         self.origin_x = self.planner.graph['metadata']['origin_x']
         self.origin_y = self.planner.graph['metadata']['origin_y']
+        self.height = self.planner.graph['metadata'].get('height', 384)
 
         # TF buffer para obtener posicion del robot
         self.tf_buffer = tf2_ros.Buffer()
@@ -65,7 +66,7 @@ class TopologicalNavigator:
     def pixel_to_meters(self, x_pixel, y_pixel):
         """Convierte coordenadas pixel a metros."""
         x_m = self.origin_x + x_pixel * self.resolution
-        y_m = self.origin_y + y_pixel * self.resolution
+        y_m = self.origin_y + (self.height - y_pixel) * self.resolution
         return x_m, y_m
 
     def get_robot_position(self):
@@ -204,6 +205,7 @@ class TopologicalNavigator:
             else:
                 px = int((robot_x - self.origin_x) / self.resolution)
                 py = int((robot_y - self.origin_y) / self.resolution)
+                py = self.height - py
                 start_node = self.planner.find_nearest_node(px, py)
 
             # Mostrar nodos

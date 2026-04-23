@@ -266,6 +266,7 @@ class TopologicalMapper:
 
     def _build_graph(self):
         origin = self.metadata.get('origin', [0, 0, 0])
+        h, w = self.map_image.shape
         self.graph = {
             'nodes': self.nodes,
             'edges': self.edges,
@@ -274,6 +275,8 @@ class TopologicalMapper:
                 'resolution_m_per_pixel': self.metadata.get('resolution', 0.05),
                 'origin_x': origin[0],
                 'origin_y': origin[1],
+                'width': w,
+                'height': h
             }
         }
         return self.graph
