@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   move_base_msgs
+  visualization_msgs
   tf2
   tf2_ros
   actionlib
@@ -27,6 +28,7 @@ catkin_package(
     geometry_msgs
     nav_msgs
     move_base_msgs
+    visualization_msgs
     tf2
     tf2_ros
     actionlib
@@ -46,6 +48,7 @@ include_directories()
 catkin_install_python(PROGRAMS
   scripts/topological_navigation.py
   scripts/generate_all_maps.py
+  scripts/graph_visualizer.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -10,18 +10,13 @@
         escenario: 1, 2, 3 o 0 (por defecto: 1)
     -->
 
+    <!-- escenario: 1, 2, 3  |  grafo: nombre del fichero JSON sin ruta
+         Para escenarios 1-3:  roslaunch ... escenario:=2
+         Para estudio:         roslaunch ... grafo:=estudio_grafo.json -->
     <arg name="escenario" default="1"/>
+    <arg name="grafo"     default="escenario$(arg escenario)_grafo.json"/>
 
-    <!-- Cargar archivo de configuracion segun el escenario -->
     <param name="/topological_nav/escenario" value="$(arg escenario)"/>
-
-    <!-- Ruta del grafo topologico (relativa al paquete) -->
-    <param name="/topological_nav/graph_path"
-           value="$(find navegacion_topologica)/mapas/grafos/escenario$(arg escenario)_grafo.json"/>
-
-    <!-- Parametros del planificador A* -->
-    <param name="/topological_nav/planning/heuristic" value="euclidean"/>
-    <param name="/topological_nav/planning/timeout_seconds" value="30.0"/>
 
     <!-- Node de navegacion topologica -->
     <node name="topological_navigator"
@@ -29,17 +24,17 @@
           type="topological_navigation.py"
           output="screen">
         <param name="graph_json"
-               value="$(find navegacion_topologica)/mapas/grafos/escenario$(arg escenario)_grafo.json"/>
+               value="$(find navegacion_topologica)/mapas/grafos/$(arg grafo)"/>
     </node>
 
-    <!-- Opcional: Visualizador de grafo -->
+    <!-- Visualizador de grafo en RViz (opcional) -->
     <node name="graph_visualizer"
           pkg="navegacion_topologica"
           type="graph_visualizer.py"
           output="screen"
           required="false">
         <param name="graph_json"
-               value="$(find navegacion_topologica)/mapas/grafos/escenario$(arg escenario)_grafo.json"/>
+               value="$(find navegacion_topologica)/mapas/grafos/$(arg grafo)"/>
     </node>
 
 </launch>

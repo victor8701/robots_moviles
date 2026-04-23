@@ -39,16 +39,26 @@ class TopologicalNavigator:
         self.origin_x = self.planner.graph['metadata']['origin_x']
         self.origin_y = self.planner.graph['metadata']['origin_y']
 
-        # Cliente de acciones move_base
-        self.move_base_client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-        self.move_base_client.wait_for_server()
-
         # TF buffer para obtener posicion del robot
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
-        # Publicador de camino (para visualizar en RViz)
-        self.path_pub = rospy.Publisher('/topological_path', Path, queue_size=1)
+        # Publicador de camino — latch=True: RViz recibe el ultimo path al suscribirse
+        self.path_pub = rospy.Publisher('/topological_path', Path, queue_size=1, latch=True)
+
+        # Publicar path vacio para que el topic aparezca en RViz desde el inicio
+        empty_path = Path()
+        empty_path.header.frame_id = "map"
+        empty_path.header.stamp = rospy.Time.now()
+        self.path_pub.publish(empty_path)
+
+        # Cliente de acciones move_base
+        rospy.loginfo("Esperando move_base...")
+        self.move_base_client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+        connected = self.move_base_client.wait_for_server(rospy.Duration(30.0))
+        if not connected:
+            rospy.logerr("move_base no disponible tras 30s. Comprueba que la navegacion esta activa.")
+            sys.exit(1)
 
         rospy.loginfo("Navegador topologico inicializado")
 
@@ -73,18 +83,26 @@ class TopologicalNavigator:
     def find_way_points(self, path_node_ids):
         """
         Convierte camino de nodos a waypoints en metros.
-
-        Args:
-            path_node_ids: Lista de IDs de nodos
-
-        Returns:
-            Lista de tuplas (x, y) en metros
+        Devuelve lista de tuplas (x, y, yaw) donde yaw es la orientacion
+        calculada como el angulo hacia el siguiente waypoint.
         """
-        waypoints = []
+        coords = []
         for node_id in path_node_ids:
             node = self.planner.nodes[node_id]
             x_m, y_m = self.pixel_to_meters(node['x_pixel'], node['y_pixel'])
-            waypoints.append((x_m, y_m))
+            coords.append((x_m, y_m))
+
+        waypoints = []
+        for i, (x, y) in enumerate(coords):
+            if i < len(coords) - 1:
+                dx = coords[i + 1][0] - x
+                dy = coords[i + 1][1] - y
+            else:
+                # Ultimo nodo: mantener orientacion del segmento anterior
+                dx = x - coords[i - 1][0] if i > 0 else 1.0
+                dy = y - coords[i - 1][1] if i > 0 else 0.0
+            yaw = math.atan2(dy, dx)
+            waypoints.append((x, y, yaw))
 
         return waypoints
 
@@ -94,15 +112,15 @@ class TopologicalNavigator:
         path.header.frame_id = "map"
         path.header.stamp = rospy.Time.now()
 
-        for x, y in waypoints:
+        for x, y, yaw in waypoints:
             pose = PoseStamped()
             pose.header.frame_id = "map"
             pose.header.stamp = rospy.Time.now()
             pose.pose.position.x = x
             pose.pose.position.y = y
             pose.pose.position.z = 0
-            pose.pose.orientation.w = 1.0
-
+            pose.pose.orientation.z = math.sin(yaw / 2.0)
+            pose.pose.orientation.w = math.cos(yaw / 2.0)
             path.poses.append(pose)
 
         self.path_pub.publish(path)
@@ -125,77 +143,99 @@ class TopologicalNavigator:
 
         rospy.loginfo(f"Camino encontrado: {' -> '.join(map(str, path))}")
 
-        # Convertir a waypoints
+        # Convertir a waypoints (x, y, yaw)
         waypoints = self.find_way_points(path)
         self.publish_path(waypoints)
 
-        # Navegar a cada waypoint
-        for i, (x, y) in enumerate(waypoints):
-            rospy.loginfo(f"Navegando a waypoint {i+1}/{len(waypoints)}: ({x:.2f}m, {y:.2f}m)")
+        # El primer waypoint es el nodo de inicio (ya estamos ahi): se salta
+        waypoints_to_visit = waypoints[1:]
 
-            # Crear goal
+        if not waypoints_to_visit:
+            rospy.loginfo("El robot ya se encuentra en el nodo destino")
+            return True
+
+        for i, (x, y, yaw) in enumerate(waypoints_to_visit):
+            node_id = path[i + 1]
+            rospy.loginfo(
+                f"Waypoint {i+1}/{len(waypoints_to_visit)}: "
+                f"nodo {node_id} ({x:.2f}m, {y:.2f}m, yaw={math.degrees(yaw):.1f}deg)"
+            )
+
             goal = MoveBaseGoal()
             goal.target_pose.header.frame_id = "map"
             goal.target_pose.header.stamp = rospy.Time.now()
             goal.target_pose.pose.position.x = x
             goal.target_pose.pose.position.y = y
-            goal.target_pose.pose.orientation.w = 1.0
+            goal.target_pose.pose.orientation.z = math.sin(yaw / 2.0)
+            goal.target_pose.pose.orientation.w = math.cos(yaw / 2.0)
 
-            # Enviar goal
             self.move_base_client.send_goal(goal)
-            wait = self.move_base_client.wait_for_result(rospy.Duration(300))
+            reached = self.move_base_client.wait_for_result(rospy.Duration(300))
 
-            if not wait:
-                rospy.logerr(f"Timeout llegando a waypoint {i}")
+            if not reached:
+                rospy.logerr(f"Timeout en waypoint {i+1} (nodo {node_id})")
                 self.move_base_client.cancel_goal()
                 return False
-            else:
-                if self.move_base_client.get_state() == actionlib.GoalStatus.SUCCEEDED:
-                    rospy.loginfo(f"Waypoint {i+1} alcanzado")
-                else:
-                    rospy.logerr(f"Fallo alcanando waypoint {i}")
-                    return False
 
-        rospy.loginfo("¡Objetivo topologico alcanzado!")
+            state = self.move_base_client.get_state()
+            if state == actionlib.GoalStatus.SUCCEEDED:
+                rospy.loginfo(f"Nodo {node_id} alcanzado")
+            else:
+                rospy.logerr(f"Fallo al alcanzar nodo {node_id} (estado={state})")
+                return False
+
+        rospy.loginfo("Objetivo topologico alcanzado!")
         return True
 
     def interactive_navigation(self):
-        """Interfaz interactiva para seleccionar nodo destino."""
-        print("\n" + "=" * 70)
-        print("NAVEGACION TOPOLOGICA - SELECCIONAR NODO DESTINO")
-        print("=" * 70)
+        """Interfaz interactiva con bucle: el usuario puede encadenar navegaciones."""
+        n_nodes = len(self.planner.nodes)
 
-        # Mostrar nodos disponibles
-        print("\nNodos disponibles:")
-        for node in self.planner.nodes:
-            x_m, y_m = self.pixel_to_meters(node['x_pixel'], node['y_pixel'])
-            print(f"  Nodo {node['id']:2d}: ({x_m:7.2f}m, {y_m:7.2f}m)")
+        while not rospy.is_shutdown():
+            print("\n" + "=" * 65)
+            print("NAVEGACION TOPOLOGICA")
+            print("=" * 65)
 
-        # Obtener nodo inicial
-        robot_x, robot_y = self.get_robot_position()
-        if robot_x is None:
-            rospy.logwarn("No se pudo obtener posicion del robot, usando nodo 0 como inicial")
-            start_node = 0
-        else:
-            start_node = self.planner.find_nearest_node(
-                int((robot_x - self.origin_x) / self.resolution),
-                int((robot_y - self.origin_y) / self.resolution)
-            )
-            rospy.loginfo(f"Nodo inicial detectado: {start_node}")
+            # Localizar robot
+            robot_x, robot_y = self.get_robot_position()
+            if robot_x is None:
+                rospy.logwarn("Sin posicion TF, asumiendo nodo 0 como inicio")
+                start_node = 0
+            else:
+                px = int((robot_x - self.origin_x) / self.resolution)
+                py = int((robot_y - self.origin_y) / self.resolution)
+                start_node = self.planner.find_nearest_node(px, py)
 
-        # Seleccionar nodo destino
-        while True:
+            # Mostrar nodos
+            print(f"\nNodo actual estimado: {start_node}")
+            print("\nNodos disponibles:")
+            for node in self.planner.nodes:
+                x_m, y_m = self.pixel_to_meters(node['x_pixel'], node['y_pixel'])
+                marker = " <-- actual" if node['id'] == start_node else ""
+                print(f"  Nodo {node['id']:2d}: ({x_m:6.2f}m, {y_m:6.2f}m){marker}")
+
+            # Pedir destino
+            print(f"\n  [q] Salir")
             try:
-                goal_node = int(input(f"\nSelecciona nodo destino (0-{len(self.planner.nodes)-1}): "))
-                if 0 <= goal_node < len(self.planner.nodes):
-                    break
-                else:
-                    print("ID de nodo invalido")
+                entrada = input(f"\nSelecciona nodo destino (0-{n_nodes-1}): ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+
+            if entrada.lower() == 'q':
+                print("Saliendo...")
+                break
+
+            try:
+                goal_node = int(entrada)
             except ValueError:
                 print("Entrada invalida, ingresa un numero")
+                continue
 
-        # Navegar
-        self.navigate_topological(start_node, goal_node)
+            if not (0 <= goal_node < n_nodes):
+                print(f"Nodo invalido. Rango: 0-{n_nodes-1}")
+                continue
+
+            self.navigate_topological(start_node, goal_node)
 
     def list_all_nodes(self):
         """Lista todos los nodos del mapa topologico."""

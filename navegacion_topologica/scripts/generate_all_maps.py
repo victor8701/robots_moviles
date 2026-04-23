@@ -1,72 +1,82 @@
 #!/usr/bin/env python3
 """
-Scripts para generar mapas topologicos de todos los entornos.
+Genera mapas topologicos para los 4 entornos y produce imagenes para la memoria.
 """
 
 import os
 import sys
+import json
 
-# Agregar la carpeta src al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from topological_mapper import TopologicalMapper
 
+ENTORNOS = ['escenario1', 'escenario2', 'escenario3', 'estudio']
 
-def generate_all_topological_maps():
-    """Genera mapas topologicos para los 4 entornos."""
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+MAP_DIR     = os.path.join(BASE_DIR, '..', '..', 'navegacion_geometrica', 'mapas', 'exploration')
+OUTPUT_DIR  = os.path.join(BASE_DIR, '..', 'mapas')
+GRAPH_DIR   = os.path.join(OUTPUT_DIR, 'grafos')
 
-    # Configuracion de los 4 entornos
-    entornos = ['escenario1', 'escenario2', 'escenario3', 'estudio']
-    base_map_dir = os.path.join(os.path.dirname(__file__),
-                                '..', '..', 'navegacion_geometrica', 'mapas', 'sensores')
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'mapas', 'topologicos')
-    graph_dir = os.path.join(os.path.dirname(__file__), '..', 'mapas', 'grafos')
+os.makedirs(GRAPH_DIR, exist_ok=True)
 
-    os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(graph_dir, exist_ok=True)
 
-    print("=" * 70)
-    print("GENERADOR DE MAPAS TOPOLOGICOS")
-    print("=" * 70)
+def procesar_entorno(entorno):
+    map_pgm  = os.path.join(MAP_DIR, f'mapa_{entorno}.pgm')
+    map_yaml = os.path.join(MAP_DIR, f'mapa_{entorno}.yaml')
 
-    for entorno in entornos:
-        print(f"\n[{entorno.upper()}]")
-        print("-" * 70)
+    if not os.path.exists(map_pgm):
+        print(f'  [ERROR] No encontrado: {map_pgm}')
+        return None
 
-        # Rutas de entrada
-        map_pgm = os.path.join(base_map_dir, f'{entorno}_sensores.pgm')
-        map_yaml = os.path.join(base_map_dir, f'{entorno}_sensores.yaml')
+    out_dir = os.path.join(OUTPUT_DIR, entorno)
+    os.makedirs(out_dir, exist_ok=True)
 
-        # Verificar que existan
-        if not os.path.exists(map_pgm) or not os.path.exists(map_yaml):
-            print(f"ERROR: No se encontraron mapas para {entorno}")
-            continue
+    output_graph   = os.path.join(GRAPH_DIR, f'{entorno}_grafo.json')
+    output_topo    = os.path.join(out_dir,   'mapa_topologico.png')
+    output_skel    = os.path.join(out_dir,   'mapa_traversabilidad.png')
+    output_free    = os.path.join(out_dir,   'mapa_libre.png')
 
-        # Rutas de salida
-        output_image = os.path.join(output_dir, f'{entorno}_topologico.png')
-        output_graph = os.path.join(graph_dir, f'{entorno}_grafo.json')
+    mapper = TopologicalMapper(map_pgm, map_yaml, skeleton_dilation=3)
+    graph  = mapper.generate()
 
-        # Generar mapa topologico
+    mapper.save_graph_json(output_graph)
+    mapper.save_topological_map_image(output_topo)
+    mapper.save_skeleton_image(output_skel)
+    mapper.save_free_space_image(output_free)
+
+    n_nodes = len(graph['nodes'])
+    n_edges = len(graph['edges'])
+    res     = graph['metadata']['resolution_m_per_pixel']
+    return {'entorno': entorno, 'nodos': n_nodes, 'aristas': n_edges, 'resolucion': res}
+
+
+def main():
+    print('=' * 65)
+    print('GENERACION DE MAPAS TOPOLOGICOS - 4 ENTORNOS')
+    print('=' * 65)
+
+    resultados = []
+    for entorno in ENTORNOS:
+        print(f'\n[{entorno.upper()}]')
+        print('-' * 65)
         try:
-            mapper = TopologicalMapper(map_pgm, map_yaml, skeleton_dilation=3)
-            graph = mapper.generate()
-
-            # Guardar resultados
-            mapper.save_graph_json(output_graph)
-            mapper.save_topological_map_image(output_image)
-
-            print(f"✓ Mapa topologico guardado: {output_image}")
-            print(f"✓ Grafo guardado: {output_graph}")
-
+            r = procesar_entorno(entorno)
+            if r:
+                resultados.append(r)
         except Exception as e:
-            print(f"ERROR al procesar {entorno}: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f'  [ERROR] {e}')
+            import traceback; traceback.print_exc()
 
-    print("\n" + "=" * 70)
-    print("¡GENERACION COMPLETADA!")
-    print("=" * 70)
+    print('\n' + '=' * 65)
+    print('RESUMEN (para la memoria)')
+    print('=' * 65)
+    print(f'{"Entorno":<15} {"Nodos":>7} {"Aristas":>9} {"Res (m/px)":>12}')
+    print('-' * 65)
+    for r in resultados:
+        print(f'{r["entorno"]:<15} {r["nodos"]:>7} {r["aristas"]:>9} {r["resolucion"]:>12.4f}')
+    print('=' * 65)
 
 
 if __name__ == '__main__':
-    generate_all_topological_maps()
+    main()

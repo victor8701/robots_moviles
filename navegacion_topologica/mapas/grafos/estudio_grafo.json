@@ -1,0 +1,155 @@
+{
+  "nodes": [
+    {
+      "id": 0,
+      "x_pixel": 270,
+      "y_pixel": 133,
+      "distance_to_wall": 31.1968994140625
+    },
+    {
+      "id": 1,
+      "x_pixel": 270,
+      "y_pixel": 163,
+      "distance_to_wall": 31.1968994140625
+    },
+    {
+      "id": 2,
+      "x_pixel": 205,
+      "y_pixel": 119,
+      "distance_to_wall": 30.368993759155273
+    },
+    {
+      "id": 3,
+      "x_pixel": 294,
+      "y_pixel": 171,
+      "distance_to_wall": 26.0
+    },
+    {
+      "id": 4,
+      "x_pixel": 177,
+      "y_pixel": 109,
+      "distance_to_wall": 25.0
+    },
+    {
+      "id": 5,
+      "x_pixel": 157,
+      "y_pixel": 158,
+      "distance_to_wall": 21.172096252441406
+    },
+    {
+      "id": 6,
+      "x_pixel": 307,
+      "y_pixel": 123,
+      "distance_to_wall": 21.0
+    },
+    {
+      "id": 7,
+      "x_pixel": 196,
+      "y_pixel": 156,
+      "distance_to_wall": 20.0
+    }
+  ],
+  "edges": [
+    {
+      "from_node": 0,
+      "to_node": 1,
+      "distance_pixels": 30.0
+    },
+    {
+      "from_node": 0,
+      "to_node": 2,
+      "distance_pixels": 66.49060083951716
+    },
+    {
+      "from_node": 0,
+      "to_node": 3,
+      "distance_pixels": 44.94441010848846
+    },
+    {
+      "from_node": 0,
+      "to_node": 4,
+      "distance_pixels": 96.04686356149273
+    },
+    {
+      "from_node": 0,
+      "to_node": 5,
+      "distance_pixels": 115.73245007343446
+    },
+    {
+      "from_node": 0,
+      "to_node": 6,
+      "distance_pixels": 38.3275357934736
+    },
+    {
+      "from_node": 1,
+      "to_node": 2,
+      "distance_pixels": 78.49203781276162
+    },
+    {
+      "from_node": 1,
+      "to_node": 3,
+      "distance_pixels": 25.298221281347036
+    },
+    {
+      "from_node": 1,
+      "to_node": 4,
+      "distance_pixels": 107.54068997360952
+    },
+    {
+      "from_node": 1,
+      "to_node": 6,
+      "distance_pixels": 54.48853090330111
+    },
+    {
+      "from_node": 2,
+      "to_node": 3,
+      "distance_pixels": 103.07764064044152
+    },
+    {
+      "from_node": 2,
+      "to_node": 4,
+      "distance_pixels": 29.732137494637012
+    },
+    {
+      "from_node": 2,
+      "to_node": 6,
+      "distance_pixels": 102.07840124139877
+    },
+    {
+      "from_node": 2,
+      "to_node": 7,
+      "distance_pixels": 38.07886552931954
+    },
+    {
+      "from_node": 3,
+      "to_node": 4,
+      "distance_pixels": 132.41223508422476
+    },
+    {
+      "from_node": 4,
+      "to_node": 6,
+      "distance_pixels": 130.75167302944922
+    },
+    {
+      "from_node": 4,
+      "to_node": 7,
+      "distance_pixels": 50.695167422546305
+    },
+    {
+      "from_node": 5,
+      "to_node": 6,
+      "distance_pixels": 154.02921800749363
+    },
+    {
+      "from_node": 5,
+      "to_node": 7,
+      "distance_pixels": 39.05124837953327
+    }
+  ],
+  "metadata": {
+    "map_image": "mapa_estudio.pgm",
+    "resolution_m_per_pixel": 0.05,
+    "origin_x": -10.0,
+    "origin_y": -10.0
+  }
+}
