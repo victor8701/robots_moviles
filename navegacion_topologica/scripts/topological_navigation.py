@@ -61,6 +61,9 @@ class TopologicalNavigator:
             rospy.logerr("move_base no disponible tras 60s. Comprueba que la navegacion esta activa.")
             sys.exit(1)
 
+        # Nodos que han fallado en esta sesion (equivalente a lista_negra en geometrica)
+        self.failed_nodes = set()
+
         rospy.loginfo("Navegador topologico inicializado")
 
     def pixel_to_meters(self, x_pixel, y_pixel):
@@ -167,15 +170,24 @@ class TopologicalNavigator:
             goal.target_pose.header.stamp = rospy.Time.now()
             goal.target_pose.pose.position.x = x
             goal.target_pose.pose.position.y = y
-            goal.target_pose.pose.orientation.z = math.sin(yaw / 2.0)
-            goal.target_pose.pose.orientation.w = math.cos(yaw / 2.0)
+            # Solo el nodo final lleva orientacion; los intermedios usan orientacion neutra
+            # (igual que la navegacion geometrica con w=1.0) para evitar giros en sitio
+            # que causan oscilacion en move_base.
+            is_final = (i == len(waypoints_to_visit) - 1)
+            if is_final:
+                goal.target_pose.pose.orientation.z = math.sin(yaw / 2.0)
+                goal.target_pose.pose.orientation.w = math.cos(yaw / 2.0)
+            else:
+                goal.target_pose.pose.orientation.z = 0.0
+                goal.target_pose.pose.orientation.w = 1.0
 
             self.move_base_client.send_goal(goal)
-            reached = self.move_base_client.wait_for_result(rospy.Duration(300))
+            reached = self.move_base_client.wait_for_result(rospy.Duration(60))
 
             if not reached:
                 rospy.logerr(f"Timeout en waypoint {i+1} (nodo {node_id})")
                 self.move_base_client.cancel_goal()
+                self.failed_nodes.add(node_id)
                 return False
 
             state = self.move_base_client.get_state()
@@ -183,6 +195,7 @@ class TopologicalNavigator:
                 rospy.loginfo(f"Nodo {node_id} alcanzado")
             else:
                 rospy.logerr(f"Fallo al alcanzar nodo {node_id} (estado={state})")
+                self.failed_nodes.add(node_id)
                 return False
 
         rospy.loginfo("Objetivo topologico alcanzado!")
@@ -214,7 +227,8 @@ class TopologicalNavigator:
             for node in self.planner.nodes:
                 x_m, y_m = self.pixel_to_meters(node['x_pixel'], node['y_pixel'])
                 marker = " <-- actual" if node['id'] == start_node else ""
-                print(f"  Nodo {node['id']:2d}: ({x_m:6.2f}m, {y_m:6.2f}m){marker}")
+                failed_mark = " [FALLO PREV.]" if node['id'] in self.failed_nodes else ""
+                print(f"  Nodo {node['id']:2d}: ({x_m:6.2f}m, {y_m:6.2f}m){marker}{failed_mark}")
 
             # Pedir destino
             print(f"\n  [q] Salir")
@@ -236,6 +250,12 @@ class TopologicalNavigator:
             if not (0 <= goal_node < n_nodes):
                 print(f"Nodo invalido. Rango: 0-{n_nodes-1}")
                 continue
+
+            # Avisar si la ruta planificada pasa por nodos que ya fallaron
+            preview_path = self.planner.plan_path(start_node, goal_node)
+            if preview_path and any(n in self.failed_nodes for n in preview_path):
+                problematic = [n for n in preview_path if n in self.failed_nodes]
+                print(f"  AVISO: la ruta pasa por nodo(s) que fallaron antes: {problematic}")
 
             self.navigate_topological(start_node, goal_node)
 

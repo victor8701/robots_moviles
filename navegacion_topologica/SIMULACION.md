@@ -13,8 +13,11 @@ source /opt/ros/noetic/setup.bash && source /home/ubuntu20/Ubuntu20noetic_ws/dev
 
 ## Terminal 2 — Navigation stack (mapa + AMCL + move_base)
 
+La pose inicial debe coincidir con el spawn del robot en Gazebo (escenario2: x=4.0, y=-1.0).
+Pasar los parámetros directamente evita tener que usar "2D Pose Estimate" en RViz.
+
 ```bash
-source /opt/ros/noetic/setup.bash && source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash && export TURTLEBOT3_MODEL=burger && roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario2.yaml
+source /opt/ros/noetic/setup.bash && source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash && export TURTLEBOT3_MODEL=burger && roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario2.yaml initial_pose_x:=4.0 initial_pose_y:=-1.0
 ```
 
 ## Terminal 3 — Visualizador del grafo topológico en RViz
@@ -70,7 +73,6 @@ roslaunch navegacion_topologica topological_navigation.launch grafo:=estudio_gra
 
 - Si move_base no arranca: verificar que el paquete turtlebot3_navigation está instalado
   (`sudo apt install ros-noetic-turtlebot3-navigation`)
-- La pose inicial en AMCL debe coincidir con la posición de spawn del robot en Gazebo
-  (ver x_pos/y_pos en el launch de geometrica)
-- Para el estudio, el robot aparece en distinta posición inicial; ajustar
-  la pose inicial en RViz con "2D Pose Estimate"
+- Para el estudio, el robot aparece en distinta posición inicial (ver x_pos/y_pos en el
+  launch de geometrica); pasar initial_pose_x/y al launch de navegación o usar
+  "2D Pose Estimate" en RViz
