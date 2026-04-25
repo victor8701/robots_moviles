@@ -13,11 +13,11 @@ source /opt/ros/noetic/setup.bash && source /home/ubuntu20/Ubuntu20noetic_ws/dev
 
 ## Terminal 2 — Navigation stack (mapa + AMCL + move_base)
 
-La pose inicial debe coincidir con el spawn del robot en Gazebo (escenario2: x=4.0, y=-1.0).
+La pose inicial correcta en el marco del mapa es (0,0), ya que `gmapping` generó el mapa tomando como origen la posición de inicio del robot. 
 Pasar los parámetros directamente evita tener que usar "2D Pose Estimate" en RViz.
 
 ```bash
-source /opt/ros/noetic/setup.bash && source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash && export TURTLEBOT3_MODEL=burger && roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario2.yaml initial_pose_x:=4.0 initial_pose_y:=-1.0
+source /opt/ros/noetic/setup.bash && source /home/ubuntu20/Ubuntu20noetic_ws/devel/setup.bash && export TURTLEBOT3_MODEL=burger && roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario2.yaml
 ```
 
 ## Terminal 3 — Visualizador del grafo topológico en RViz
