@@ -1,243 +1,228 @@
-# Navegación Semántica - Clasificación Basada en Regiones 3D
+# Navegación Semántica — Clasificación de Regiones 3D
 
-## Introducción
+Módulo 3 del proyecto. Enriquece el grafo topológico con **información semántica** derivada del análisis volumétrico 3D de cada nodo. El robot puede navegar hacia tipos de región ("ir a una habitación") y el planificador A\* usa costes semánticos que dan prioridad a espacios amplios y seguros.
 
-La **navegación semántica** enriquece los sistemas de navegación tradicionales (geométrica y topológica) con comprensión del significado y las características del entorno. Este trabajo se enfoca en **clasificación semántica basada en regiones 3D**, utilizando información de profundidad para segmentar y clasificar diferentes áreas del espacio.
+---
 
-## Concepto Fundamental
+## Concepto: clasificación semántica basada en regiones 3D
 
-Mientras que:
-- **Navegación geométrica**: Considera obstáculos como polígonos/puntos
-- **Navegación topológica**: Representa el espacio como un grafo de nodos/conexiones
-
-La **navegación semántica** añade un nivel de abstracción donde el robot entiende el "tipo" de espacio (corredor, habitación, zona abierta, etc.) y puede tomar decisiones basadas en estas categorías.
-
-## Técnica: Clasificación de Regiones 3D
-
-### Descripción
-
-La clasificación de regiones 3D segmenta el entorno observable en regiones coherentes basadas en:
-
-1. **Información de profundidad** (depth maps): Reconstruye geometría 3D
-2. **Clustering espacial**: Agrupa puntos cercanos en regiones
-3. **Análisis de características**: Calcula dimensiones y propiedades
-4. **Clasificación heurística**: Asigna etiquetas semánticas
-
-### Pipeline de Procesamiento
+La navegación tradicional ve el espacio como obstáculos y espacio libre. La navegación semántica añade la pregunta: **¿qué tipo de espacio es este?**
 
 ```
-Imagen de Profundidad
-        ↓
-Conversión a Nube de Puntos 3D
-        ↓
-Segmentación por:
-  - Altura
-  - Ocupancia
-  - Clustering espacial
-        ↓
-Extracción de Regiones
-        ↓
-Clasificación (corridor/room/obstacle)
-        ↓
-Análisis de Transitabilidad
-        ↓
-Construcción de Grafo Semántico
-        ↓
-Toma de Decisiones de Navegación
+Nivel geométrico:  "espacio libre de 384×384 píxeles"
+Nivel topológico:  "nodo 1 en (0.20, -0.70) m"
+Nivel semántico:   "nodo 1 es una HABITACIÓN — espacio amplio, bajo riesgo"
 ```
 
-### Métodos de Segmentación
+### Técnica implementada: proyección 2D→3D con `SemanticMapper3D`
 
-#### 1. Segmentación por Altura
-- Clasifica puntos según su componente Z
-- Típicamente: suelo (0-20cm), obstáculos (20cm-1m), pared (>1m)
-- Sencillo pero rápido
+El clasificador (`semantic_mapper_3d.py`) aplica razonamiento volumétrico 3D sobre los datos geométricos del mapa 2D:
 
-#### 2. Segmentación por Ocupancia
-- Identifica áreas con alta densidad de puntos (ocupadas) vs. vacías
-- Útil para distinguir objetos vs. espacio libre
-- Base para otros métodos
+1. **Extrae** el radio de espacio libre de cada nodo (`distance_to_wall` en metros).
+2. **Proyecta** al espacio 3D: `width = distance_to_wall × 2`, `height = 2.5 m` (altura interior estándar), `volume = width² × height`.
+3. **Clasifica** por dimensiones volumétricas:
 
-#### 3. Clustering Espacial 3D
-- Agrupa puntos que están cercanos entre sí
-- Métodos: Flood-fill, DBSCAN, K-means
-- Genera regiones coherentes
+| Etiqueta 3D | Ancho (width) | Altura | → Etiqueta topológica |
+|-------------|--------------|--------|-----------------------|
+| `wall`      | < 0.8 m      | > 1.5 m | `narrow`             |
+| `corridor`  | 0.8 – 2.0 m  | > 1.5 m | `corridor` / `junction` |
+| `room`      | 2.0 – 3.0 m  | > 1.5 m | `room`               |
+| `large_room`| > 3.0 m      | > 1.5 m | `room`               |
 
-### Clasificación de Regiones
+4. **Refinamiento topológico**: si el nodo es `corridor` y tiene ≥ 3 direcciones abiertas (ray-casting cardinal) → se reclasifica como `junction` (cruce de pasillos).
 
-Una vez segmentadas, se clasifican por dimensiones:
+### Atributos semánticos por tipo de región
 
-| Etiqueta | Ancho | Altura | Uso |
-|----------|-------|--------|-----|
-| Corredor | 1-3m | >1.5m | Pasillos conectores |
-| Habitación | >3m | >1.5m | Espacios amplios (oficinas, salas) |
-| Pared | <1m | >1m | Obstáculos verticales |
-| Suelo | Variable | <0.5m | Superficies transitables |
-| Obstáculo | Variable | Variable | Barreras |
+| Tipo | Coste traversal | Dificultad | Riesgo |
+|------|:--------------:|:----------:|:------:|
+| `room`     | 0.70 | easy   | low    |
+| `corridor` | 1.00 | medium | low    |
+| `junction` | 1.20 | medium | medium |
+| `narrow`   | 1.80 | hard   | high   |
 
-### Atributos Semánticos
+---
 
-Cada región obtiene atributos que guían la navegación:
-
-- **is_traversable**: ¿Es posible pasar por aquí?
-- **difficulty**: Nivel de dificultad (easy/medium/hard)
-- **connectivity**: Qué otras regiones conecta
-- **traversal_cost**: Costo asociado (tiempo, energía, riesgo)
-
-## Integración con Navegación Topológica
-
-### Grafo Semántico-Topológico
-
-Se pueden combinar mapas topológicos (nodos conectados) con información semántica:
+## Pipeline completo
 
 ```
-Node 0 (Corredor)  --1.5m--  Node 3 (Room)
-  └─ difficulty: hard         └─ difficulty: easy
-  └─ width: 1.2m              └─ width: 4.5m
+escenarioN_grafo.json  +  mapa_escenarioN.pgm
+           │                       │
+           └───────────────────────┘
+                       │
+               semantic_enricher.py
+                       │  (SemanticMapper3D → classify_node_from_map)
+                       ▼
+          escenarioN_grafo_semantico.json
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+  semantic_path_planner.py   semantic_navigation.py
+  (A* con costes semánticos)   (nodo ROS interactivo)
+          │
+   resultados/
+   ├── escenarioN_semantico.png         (mapa coloreado)
+   ├── escenarioN_pipeline_semantico.png (mapa geo + semántico)
+   ├── escenarioN_comparacion_rutas.png  (topológica vs. semántica)
+   └── tabla_resultados.md
 ```
 
-### Mejoras en Path Planning
+---
 
-1. **Preferencia de caminos**: Elegir corredores amplios (fáciles) vs. estrechos
-2. **Análisis de riesgo**: Evitar regiones con obstáculos o baja ocupancia
-3. **Optimización multicriterio**: Minimizar distancia Y dificultad
-4. **Exploración adaptativa**: Priorizar regiones desconocidas
+## Resultados de clasificación (4 entornos)
 
-### Ejemplo Práctico
+| Entorno | Nodos | Rooms | Junctions | Coste medio |
+|---------|------:|------:|----------:|------------:|
+| escenario1 | 3 | 2 | 1 | 0.87 |
+| escenario2 | 8 | 3 | 5 | 1.01 |
+| escenario3 | 9 | 2 | 7 | 1.09 |
+| estudio    | 8 | 8 | 0 | 0.70 |
 
-**Escenario**: Habitación con múltiples puertas y corredores
+El entorno `estudio` tiene todos los nodos clasificados como `room` porque todos los puntos óptimos del grafo caen en habitaciones con radio > 1.0 m.
 
-Navegación geométrica: "Evita polígonos de obstáculo"
-Navegación topológica: "Pasa por nodos 5→8→12"
-Navegación semántica: "Prefer el corredor ancho (1) sobre el estrecho (2)"
+### Pares con rutas DIFERENTES en escenario3
 
-## Implementación en el Proyecto
+El planificador semántico elige un camino distinto al topológico en 8 de los 36 pares posibles. El caso más llamativo:
 
-### Archivo: semantic_mapper_3d.py
+| Par | Topológica | Semántica | Coste sem. |
+|-----|-----------|-----------|:----------:|
+| **2 → 6** | `[2,3,7,6]` 5.51 m (todo junctions) | `[2,1,6]` 6.16 m (pasa por room) | −1.70 |
+| 2 → 7 | `[2,3,7]` | `[2,1,7]` | rodeo por room |
+| 2 → 5 | `[2,5]` | `[2,1,5]` | rodeo por room |
 
-**Clase SemanticRegion**:
-```python
-region.label        # "corridor", "room", etc.
-region.width        # Ancho en metros
-region.height       # Altura en metros
-region.volume       # Volumen aproximado
-region.centroid     # Centro de la región
-region.connectivity # Lista de regiones conectadas
-region.attributes   # Dict con propiedades adicionales
+La semántica prefiere rutas más largas en metros pero con menor coste semántico acumulado (menor riesgo, menor dificultad).
+
+---
+
+## Instalación
+
+```bash
+pip install pyyaml opencv-python scikit-image numpy scipy
 ```
 
-**Método: segment_by_height()**
-- Segmenta por altura relativa
-- Ideal para suelo vs. obstáculos
+---
 
-**Método: segment_by_clustering()**
-- Agrupa puntos 3D cercanos
-- Genera regiones coherentes
+## Paso 0: generar los grafos semánticos (una sola vez)
 
-**Método: extract_regions()**
-- Calcula propiedades de cada región
-- Clasifica automáticamente por dimensiones
-
-## Ventajas de esta Aproximación
-
-### Robustez
-- No depende solo de forma (como topológico)
-- Incorpora información física 3D (profundidad)
-- Tolera incertidumbre en sensores
-
-### Escalabilidad
-- Se puede aplicar a diferentes sensores (Lidar, DeptCamera, etc.)
-- No requiere mapa previo
-- Funciona en tiempo real
-
-### Interpretabilidad
-- Las etiquetas (corridor, room) son comprensibles
-- Los atributos permiten razonamiento de alto nivel
-- Facilita aprendizaje y adaptación
-
-### Aplicabilidad
-- Búsqueda y rescate ("encontrar sala mayor")
-- Limpieza automática ("prioritizar habitaciones amplias")
-- Exploración ("mapear nuevas áreas desconocidas")
-
-## Referencias Científicas
-
-1. **Thrun, S., Burgard, W., & Fox, D. (2005).** Probabilistic Robotics. MIT Press.
-   - Cap. 10-11: State estimation y mapping
-   - Métodos fundamentales para fusion de sensores
-
-2. **Boykov, Y., & Kolmogorov, V. (2004).** "An experimental comparison of min-cut/max-flow algorithms for energy minimization in vision." IEEE TPAMI.
-   - Segmentación de imágenes usando graph cuts
-   - Base teórica para particionamiento de regiones
-
-3. **Rusu, R. B., & Cousins, S. (2011).** "3D is here: Point Cloud Library (PCL)." ICRA.
-   - Procesamiento de nubes de puntos
-   - Algoritmos de clustering y segmentación 3D
-
-4. **Felzenszwalb, P. F., & Huttenlocher, D. P. (2004).** "Efficient graph-based image segmentation." IJCV.
-   - Segmentación basada en similitud
-   - Métodos para agrupar regiones coherentes
-
-5. **He, K., Zhang, X., Ren, S., & Sun, J. (2017).** "Mask R-CNN." ICCV.
-   - Deep learning para detección y segmentación de instancias
-   - Aproximación moderna complementaria a métodos clásicos
-
-## Aplicación al Trabajo Práctico
-
-### Fase 1: Validación del Método
-- [ ] Implementar segmentación básica por altura
-- [ ] Probar con imágenes de profundidad reales del TurtleBot3
-- [ ] Validar clasificación de regiones
-
-### Fase 2: Integración con Topológica
-- [ ] Asignar atributos semánticos a nodos topológicos
-- [ ] Modificar A* para considerar dificultad/tipo de región
-- [ ] Generar grafos semántico-topológicos
-
-### Fase 3: Demostración
-- [ ] Video mostrando clasificación automática de regiones
-- [ ] Comparativa: navegación topológica vs. semántica
-- [ ] Análisis de mejora en eficiencia y naturalidad
-
-## Conclusiones y Análisis Personal
-
-### Utilidad para el Trabajo Actual
-
-La clasificación 3D de regiones es especialmente útil porque:
-
-1. **Complementa navegación topológica**: Añade razomiento de alto nivel a decisiones basadas en nodos
-2. **Usa sensores disponibles**: El TurtleBot3 tiene cámara RGB-D integrada (Kinect-style)
-3. **Escalable**: Se puede enriquecer con más características (color, semántica deep-learning, etc.)
-
-### Integración Futura
-
-Para un sistema de navegación completo:
-
-```
-Nivel Semántico
-    ↓ "Ir a habitación principal"
-Nivel Topológico
-    ↓ "Pasa por nodos 5→12→18"
-Nivel Geométrico
-    ↓ "Evita obstáculos, sigue trayectoria"
-Actuadores del Robot
+```bash
+source ~/Ubuntu20noetic_ws/devel/setup.bash
+cd $(rospack find navegacion_semantica)
+python3 semantic_enricher.py
 ```
 
-Este enfoque permite:
-- Órdenes en lenguaje natural ("Lleva esto a la sala")
-- Razonamiento sobre el entorno ("El corredor es demasiado estrecho")
-- Adaptación a cambios ("Esta habitación ahora tiene mobiliario")
+Genera `escenarioN_grafo_semantico.json` en `navegacion_topologica/mapas/grafos/` y las imágenes en `resultados/`.
 
-### Limitaciones Actuales
+Para regenerar las figuras para la memoria:
 
-- Métodos heurísticos (requieren tuning por entorno)
-- Depende calidad sensores profundidad
-- No incorpora significado contextual real (ej: "oficina" vs. "almacén")
-- Mejora potencial: Usar deep learning para clasificación más robusta
+```bash
+python3 generate_semantic_results.py
+```
 
-## Próximos Pasos
+---
 
-1. **Enriquecimiento semántico**: Integrar detectores de objetos (YOLO, Mask R-CNN)
-2. **Aprendizaje**: Entrenar clasificadores con ejemplos del entorno
-3. **Razonamiento**: Desarrollo de sistema experto para decisiones navigate
-4. **Colaboración humano-robot**: Solicitar feedback del usuario para refinamiento
+## Probar el planificador sin ROS
+
+```bash
+cd $(rospack find navegacion_semantica)
+
+# Ver clasificación 3D de todos los nodos y comparar rutas
+python3 semantic_path_planner.py \
+  $(rospack find navegacion_topologica)/mapas/grafos/escenario3_grafo_semantico.json \
+  2 6 --compare
+```
+
+Salida esperada:
+```
+NODOS CON INFORMACION SEMANTICA
+  ID    Pos (m)         Tipo       Cost   Dif.   Riesgo
+   0  ( 0.80,  4.50)  room       0.70   easy   low
+   1  ( 0.20, -0.70)  room       0.70   easy   low
+   2  ( 0.00, -2.65)  junction   1.20   medium medium
+   ...
+
+COMPARACION: Nodo 2 → Nodo 6
+🔵 TOPOLOGICA: 2→3→7→6  (5.51m, coste 4.8)
+🟢 SEMANTICA:  2→1→6    (6.16m, coste 3.1)
+→ Rutas DIFERENTES: la semántica pasa por la habitación
+```
+
+---
+
+## Simulación completa con ROS
+
+Ver [SIMULACION.md](SIMULACION.md) para la secuencia detallada de 3 terminales, configuración de RViz y guía de grabación del vídeo.
+
+### Resumen de comandos (escenario3)
+
+```bash
+# Terminal 1 — Gazebo
+export TURTLEBOT3_MODEL=burger
+roslaunch navegacion_geometrica turtlebot3_escenario3.launch
+
+# Terminal 2 — Navigation stack
+roslaunch turtlebot3_navigation turtlebot3_navigation.launch \
+  map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario3.yaml
+
+# Terminal 3 — Nodo semántico
+rosrun navegacion_semantica semantic_navigation.py \
+  $(rospack find navegacion_topologica)/mapas/grafos/escenario3_grafo_semantico.json
+```
+
+---
+
+## Estructura de archivos
+
+```
+navegacion_semantica/
+├── semantic_mapper_3d.py          # Clasificador 3D (SemanticMapper3D)
+├── semantic_enricher.py           # Enriquece los 4 entornos → JSON semánticos
+├── semantic_integration.py        # Integra SemanticMapper3D con el grafo
+├── semantic_path_planner.py       # A* con costes semánticos
+├── generate_semantic_results.py   # Genera figuras y tabla para la memoria
+├── scripts/
+│   └── semantic_navigation.py     # Nodo ROS interactivo
+├── launch/
+│   └── semantic_navigation.launch
+├── resultados/
+│   ├── escenario{1,2,3}_semantico.png
+│   ├── escenario{1,2,3}_pipeline_semantico.png
+│   ├── escenario{1,2,3}_comparacion_rutas.png
+│   └── tabla_resultados.md
+└── SIMULACION.md                  # Guía completa para el vídeo
+```
+
+---
+
+## Guía para el vídeo
+
+La secuencia completa está en [SIMULACION.md](SIMULACION.md). Resumen de los momentos clave:
+
+1. **Mapa semántico en RViz**: esferas verdes (rooms) y moradas (junctions) sobre el mapa. Narrar: *"SemanticMapper3D clasifica cada nodo por su volumen 3D estimado"*.
+2. **Demo ruta diferente** (par 2→6): mostrar la comparativa en terminal antes de confirmar. El robot elige el camino más largo pero más seguro pasando por la habitación.
+3. **Navegación por tipo** (`r` en el menú): el sistema localiza automáticamente la habitación más amplia y navega hacia ella.
+4. **Cambio de modo** (`t`): contrastar topológico vs. semántico con el mismo par de nodos.
+
+---
+
+## Puntos clave para la memoria
+
+### Qué es la clasificación semántica basada en regiones 3D
+- Extiende el mapa topológico añadiendo **significado** a cada región.
+- La clase `SemanticMapper3D` proyecta datos 2D a espacio 3D (width, height, volume) y clasifica por dimensiones métricas.
+- Reproduce la lógica que aplicaría sobre una nube de puntos real, usando la Transformada de Distancia como estimador del radio libre.
+
+### Cómo mejora la navegación
+- **Costes heterogéneos**: habitaciones cuestan 0.70, cruces 1.20 → el planificador encuentra rutas menos arriesgadas aunque sean métricamente más largas.
+- **Navegación por semántica**: el usuario puede decir "ir a la habitación" sin conocer el ID del nodo.
+- **Información para el operador**: el mapa coloreado muestra de un vistazo qué zonas son más complejas para navegar.
+
+### Limitaciones y líneas futuras
+- La clasificación usa datos geométricos 2D proyectados; una cámara de profundidad real (RGB-D) permitiría clasificación volumétrica directa.
+- El nivel semántico actual (room/junction) es funcional pero no distingue tipo de habitación (cocina vs. dormitorio), para lo que haría falta detección de objetos (YOLO/Mask R-CNN).
+- En grafos pequeños con una sola ruta posible, la semántica no cambia el camino pero sí la estimación del coste y riesgo.
+
+### Referencias científicas clave
+1. Thrun, Burgard & Fox (2005). *Probabilistic Robotics*. MIT Press. — Base teórica de mapas métricos y topológicos.
+2. Rusu & Cousins (2011). "3D is here: PCL." ICRA. — Procesamiento de nubes de puntos y clustering 3D.
+3. Felzenszwalb & Huttenlocher (2004). "Efficient graph-based image segmentation." IJCV. — Segmentación de regiones coherentes.
+4. Boykov & Kolmogorov (2004). "Min-cut/max-flow for energy minimization in vision." IEEE TPAMI. — Particionamiento de regiones semánticas.
+5. He et al. (2017). "Mask R-CNN." ICCV. — Aproximación deep learning para segmentación de instancias (línea futura).
