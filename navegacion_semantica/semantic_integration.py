@@ -106,53 +106,38 @@ def classify_node_geometry(free_mask: np.ndarray,
                            x_pixel: int, y_pixel: int,
                            distance_to_wall: float) -> str:
     """
-    Clasifica un nodo del grafo topologico usando:
-      1. Su distancia a la pared mas cercana (ya calculada por el mapper).
-      2. Ray-casting en 4 + 4 direcciones para medir ancho local del espacio.
+    Clasifica un nodo del grafo topologico.
+
+    Criterio principal: distancia a la pared mas cercana (distance_to_wall),
+    ya calculada por el topological_mapper como maximo local de la
+    Transformada de Distancia. Refleja directamente la amplitud del espacio.
+
+    El ray-casting se usa SOLO para distinguir junction (cruce) de corridor.
 
     Returns:
         Etiqueta semantica: "room" | "corridor" | "junction" | "narrow"
     """
-    if free_mask is None:
-        # Sin mapa: clasificar solo por distancia_a_pared
-        if distance_to_wall >= ROOM_MIN_DIST_WALL:
-            return "room"
-        elif distance_to_wall >= CORRIDOR_MIN_DIST:
-            return "corridor"
-        else:
-            return "narrow"
-
-    directions_cardinal = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-    directions_diagonal = [(1, 1), (-1, 1), (1, -1), (-1, -1)]
-
-    cardinal_dists = [
-        _ray_cast(free_mask, x_pixel, y_pixel, d) for d in directions_cardinal
-    ]
-    diagonal_dists = [
-        _ray_cast(free_mask, x_pixel, y_pixel, d) for d in directions_diagonal
-    ]
-
-    min_width_cardinal = min(cardinal_dists)  # ancho minimo en eje cardinal
-    max_width_cardinal = max(cardinal_dists)
-
-    # Contar cuantos rayos cardinales son "abiertos" (> umbral de habitacion)
-    open_cardinal = sum(1 for d in cardinal_dists if d >= ROOM_MIN_DIST_WALL)
-
-    # Logica de clasificacion:
-    # - room: distancia grande a pared Y varios rayos abiertos
-    if distance_to_wall >= ROOM_MIN_DIST_WALL and open_cardinal >= 2:
+    # 1. ROOM: nodo con gran separacion de paredes -> espacio abierto/amplio
+    #    ROOM_MIN_DIST_WALL px = ROOM_MIN_DIST_WALL * 0.05 m
+    if distance_to_wall >= ROOM_MIN_DIST_WALL:
         return "room"
 
-    # - junction (cruce): tiene apertura en 3+ direcciones cardinales
-    open_corridor = sum(1 for d in cardinal_dists if d >= CORRIDOR_MIN_DIST)
-    if open_corridor >= 3:
-        return "junction"
+    # 2. Para nodos menos espaciosos: ray-casting para junction vs corridor
+    if free_mask is not None:
+        directions_cardinal = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+        cardinal_dists = [
+            _ray_cast(free_mask, x_pixel, y_pixel, d) for d in directions_cardinal
+        ]
+        # junction: abierto en 3+ direcciones cardinales (es un cruce)
+        open_corridor = sum(1 for d in cardinal_dists if d >= CORRIDOR_MIN_DIST)
+        if open_corridor >= 3:
+            return "junction"
 
-    # - corridor: apertura en 1-2 direcciones
-    if min_width_cardinal >= CORRIDOR_MIN_DIST or distance_to_wall >= CORRIDOR_MIN_DIST:
+    # 3. CORRIDOR: distancia a pared suficiente para navegar
+    if distance_to_wall >= CORRIDOR_MIN_DIST:
         return "corridor"
 
-    # - narrow: todo estrecho
+    # 4. NARROW: zona muy estrecha
     return "narrow"
 
 

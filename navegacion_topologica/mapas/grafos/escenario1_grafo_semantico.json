@@ -6,11 +6,11 @@
       "y_pixel": 163,
       "distance_to_wall": 25.165895462036133,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "room",
         "traversability": 0.9,
-        "difficulty": "medium",
+        "difficulty": "easy",
         "risk_level": "low",
-        "traversal_cost": 1.0,
+        "traversal_cost": 0.7,
         "nearby_regions": []
       }
     },
@@ -20,11 +20,11 @@
       "y_pixel": 167,
       "distance_to_wall": 21.5906982421875,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "room",
         "traversability": 0.9,
-        "difficulty": "medium",
+        "difficulty": "easy",
         "risk_level": "low",
-        "traversal_cost": 1.0,
+        "traversal_cost": 0.7,
         "nearby_regions": []
       }
     },
@@ -34,11 +34,11 @@
       "y_pixel": 161,
       "distance_to_wall": 16.584497451782227,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "junction",
         "traversability": 0.9,
         "difficulty": "medium",
-        "risk_level": "low",
-        "traversal_cost": 1.0,
+        "risk_level": "medium",
+        "traversal_cost": 1.2,
         "nearby_regions": []
       }
     }

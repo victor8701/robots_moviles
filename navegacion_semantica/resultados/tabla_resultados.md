@@ -2,7 +2,7 @@
 
 | Entorno | Nodos | Rooms | Corredores | Junctions | Estrechos | Costo medio |
 |---------|------:|------:|-----------:|----------:|----------:|------------:|
-| escenario1   |     3 |     0 |          3 |         0 |         0 |        1.00 |
-| escenario2   |     8 |     1 |          6 |         1 |         0 |        0.99 |
-| escenario3   |     9 |     0 |          7 |         2 |         0 |        1.04 |
-| estudio      |     8 |     0 |          8 |         0 |         0 |        1.00 |
+| escenario1   |     3 |     2 |          0 |         1 |         0 |        0.87 |
+| escenario2   |     8 |     3 |          0 |         5 |         0 |        1.01 |
+| escenario3   |     9 |     2 |          0 |         7 |         0 |        1.09 |
+| estudio      |     8 |     8 |          0 |         0 |         0 |        0.70 |

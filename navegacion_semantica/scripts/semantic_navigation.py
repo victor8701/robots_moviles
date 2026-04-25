@@ -32,15 +32,29 @@ from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import ColorRGBA
 import tf2_ros
 
-# Añadir carpeta navegacion_semantica al path
+# Rutas de modulos locales
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_SEM_DIR    = os.path.join(_SCRIPT_DIR, '..')
-_TOPO_SRC   = os.path.join(_SEM_DIR, '..', 'navegacion_topologica', 'src')
-sys.path.insert(0, _SEM_DIR)
-sys.path.insert(0, _TOPO_SRC)
+_SEM_DIR    = os.path.abspath(os.path.join(_SCRIPT_DIR, '..'))
+_TOPO_SRC   = os.path.abspath(os.path.join(_SEM_DIR, '..', 'navegacion_topologica', 'src'))
 
-from semantic_path_planner  import SemanticPathPlanner
-from semantic_integration   import REGION_COLORS
+# Cargar semantic_integration con ruta absoluta para evitar colision de nombres
+# con el archivo homonimo en navegacion_topologica/src/
+import importlib.util as _ilu
+_si_spec = _ilu.spec_from_file_location(
+    "sem_integration_local",
+    os.path.join(_SEM_DIR, "semantic_integration.py")
+)
+_si_mod = _ilu.module_from_spec(_si_spec)
+_si_spec.loader.exec_module(_si_mod)
+REGION_COLORS = _si_mod.REGION_COLORS
+
+# semantic_path_planner esta en _SEM_DIR y depende de path_planner en _TOPO_SRC
+if _TOPO_SRC not in sys.path:
+    sys.path.insert(0, _TOPO_SRC)
+if _SEM_DIR not in sys.path:
+    sys.path.insert(0, _SEM_DIR)
+
+from semantic_path_planner import SemanticPathPlanner
 
 
 # ---------------------------------------------------------------------------

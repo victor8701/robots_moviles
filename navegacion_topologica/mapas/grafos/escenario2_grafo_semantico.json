@@ -6,11 +6,11 @@
       "y_pixel": 252,
       "distance_to_wall": 30.9844970703125,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "room",
         "traversability": 0.9,
-        "difficulty": "medium",
+        "difficulty": "easy",
         "risk_level": "low",
-        "traversal_cost": 1.0,
+        "traversal_cost": 0.7,
         "nearby_regions": []
       }
     },
@@ -34,11 +34,11 @@
       "y_pixel": 289,
       "distance_to_wall": 24.9844970703125,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "room",
         "traversability": 0.9,
-        "difficulty": "medium",
+        "difficulty": "easy",
         "risk_level": "low",
-        "traversal_cost": 1.0,
+        "traversal_cost": 0.7,
         "nearby_regions": []
       }
     },
@@ -48,11 +48,11 @@
       "y_pixel": 194,
       "distance_to_wall": 16.181398391723633,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "junction",
         "traversability": 0.9,
         "difficulty": "medium",
-        "risk_level": "low",
-        "traversal_cost": 1.0,
+        "risk_level": "medium",
+        "traversal_cost": 1.2,
         "nearby_regions": []
       }
     },
@@ -62,11 +62,11 @@
       "y_pixel": 185,
       "distance_to_wall": 15.98139762878418,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "junction",
         "traversability": 0.9,
         "difficulty": "medium",
-        "risk_level": "low",
-        "traversal_cost": 1.0,
+        "risk_level": "medium",
+        "traversal_cost": 1.2,
         "nearby_regions": []
       }
     },
@@ -90,11 +90,11 @@
       "y_pixel": 186,
       "distance_to_wall": 13.0,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "junction",
         "traversability": 0.9,
         "difficulty": "medium",
-        "risk_level": "low",
-        "traversal_cost": 1.0,
+        "risk_level": "medium",
+        "traversal_cost": 1.2,
         "nearby_regions": []
       }
     },
@@ -104,11 +104,11 @@
       "y_pixel": 264,
       "distance_to_wall": 11.590700149536133,
       "semantic": {
-        "region_type": "corridor",
+        "region_type": "junction",
         "traversability": 0.9,
         "difficulty": "medium",
-        "risk_level": "low",
-        "traversal_cost": 1.0,
+        "risk_level": "medium",
+        "traversal_cost": 1.2,
         "nearby_regions": []
       }
     }

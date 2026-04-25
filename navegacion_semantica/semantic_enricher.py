@@ -41,29 +41,29 @@ from semantic_integration import (
 _WS = os.path.abspath(os.path.join(_SCRIPT_DIR, '..'))  # robots_moviles/
 
 TOPO_GRAFOS_DIR = os.path.join(_WS, 'navegacion_topologica', 'mapas', 'grafos')
-GEO_MAPAS_DIR   = os.path.join(_WS, 'navegacion_geometrica', 'mapas', 'sensores')
+GEO_MAPAS_DIR   = os.path.join(_WS, 'navegacion_geometrica', 'mapas', 'exploration')
 OUT_DIR         = os.path.join(_SCRIPT_DIR, 'resultados')
 
 ENTORNOS = {
     'escenario1': {
         'grafo': os.path.join(TOPO_GRAFOS_DIR, 'escenario1_grafo.json'),
-        'pgm':   os.path.join(GEO_MAPAS_DIR,   'escenario1_sensores.pgm'),
-        'yaml':  os.path.join(GEO_MAPAS_DIR,   'escenario1_sensores.yaml'),
+        'pgm':   os.path.join(GEO_MAPAS_DIR,   'mapa_escenario1.pgm'),
+        'yaml':  os.path.join(GEO_MAPAS_DIR,   'mapa_escenario1.yaml'),
     },
     'escenario2': {
         'grafo': os.path.join(TOPO_GRAFOS_DIR, 'escenario2_grafo.json'),
-        'pgm':   os.path.join(GEO_MAPAS_DIR,   'escenario2_sensores.pgm'),
-        'yaml':  os.path.join(GEO_MAPAS_DIR,   'escenario2_sensores.yaml'),
+        'pgm':   os.path.join(GEO_MAPAS_DIR,   'mapa_escenario2.pgm'),
+        'yaml':  os.path.join(GEO_MAPAS_DIR,   'mapa_escenario2.yaml'),
     },
     'escenario3': {
         'grafo': os.path.join(TOPO_GRAFOS_DIR, 'escenario3_grafo.json'),
-        'pgm':   os.path.join(GEO_MAPAS_DIR,   'escenario3_sensores.pgm'),
-        'yaml':  os.path.join(GEO_MAPAS_DIR,   'escenario3_sensores.yaml'),
+        'pgm':   os.path.join(GEO_MAPAS_DIR,   'mapa_escenario3.pgm'),
+        'yaml':  os.path.join(GEO_MAPAS_DIR,   'mapa_escenario3.yaml'),
     },
     'estudio': {
         'grafo': os.path.join(TOPO_GRAFOS_DIR, 'estudio_grafo.json'),
-        'pgm':   os.path.join(GEO_MAPAS_DIR,   'estudio_sensores.pgm'),
-        'yaml':  os.path.join(GEO_MAPAS_DIR,   'estudio_sensores.yaml'),
+        'pgm':   os.path.join(GEO_MAPAS_DIR,   'mapa_estudio.pgm'),
+        'yaml':  os.path.join(GEO_MAPAS_DIR,   'mapa_estudio.yaml'),
     },
 }
 
