@@ -1,0 +1,39 @@
+<launch>
+  <!-- ===================================================
+       Navegacion Semantica — TurtleBot3 en Gazebo
+       Uso:
+         roslaunch navegacion_semantica semantic_navigation.launch escenario:=escenario2
+       =================================================== -->
+
+  <arg name="escenario"  default="escenario2"
+       doc="Escenario: escenario1 | escenario2 | escenario3 | estudio"/>
+
+  <!-- Rutas de archivos -->
+  <arg name="map_dir"
+       value="$(find navegacion_geometrica)/mapas/sensores"/>
+  <arg name="topo_dir"
+       value="$(find navegacion_topologica)/mapas/grafos"/>
+  <arg name="sem_dir"
+       value="$(find navegacion_semantica)"/>
+
+  <!-- Grafo semantico enriquecido (generado por semantic_enricher.py) -->
+  <arg name="graph_json"
+       value="$(arg topo_dir)/$(arg escenario)_grafo_semantico.json"/>
+
+  <!-- ===================================================
+       1. Simulacion (Gazebo + TurtleBot3)
+       =================================================== -->
+  <include file="$(find navegacion_geometrica)/launch/turtlebot3_$(arg escenario).launch"/>
+
+  <!-- ===================================================
+       2. Nodo de navegacion semantica
+       =================================================== -->
+  <node name="semantic_navigator"
+        pkg="navegacion_semantica"
+        type="semantic_navigation.py"
+        output="screen"
+        launch-prefix="xterm -e">
+    <param name="graph_json" value="$(arg graph_json)"/>
+  </node>
+
+</launch>

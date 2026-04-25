@@ -1,0 +1,71 @@
+{
+  "nodes": [
+    {
+      "id": 0,
+      "x_pixel": 209,
+      "y_pixel": 163,
+      "distance_to_wall": 25.165895462036133,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 1,
+      "x_pixel": 306,
+      "y_pixel": 167,
+      "distance_to_wall": 21.5906982421875,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 2,
+      "x_pixel": 250,
+      "y_pixel": 161,
+      "distance_to_wall": 16.584497451782227,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from_node": 0,
+      "to_node": 1,
+      "distance_pixels": 97.082439194738
+    },
+    {
+      "from_node": 0,
+      "to_node": 2,
+      "distance_pixels": 41.048751503547585
+    },
+    {
+      "from_node": 1,
+      "to_node": 2,
+      "distance_pixels": 56.32051136131489
+    }
+  ],
+  "metadata": {
+    "map_image": "mapa_escenario1.pgm",
+    "resolution_m_per_pixel": 0.05,
+    "origin_x": -10.0,
+    "origin_y": -10.0,
+    "width": 384,
+    "height": 384
+  }
+}

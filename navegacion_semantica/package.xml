@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>navegacion_semantica</name>
+  <version>1.0.0</version>
+  <description>
+    Navegacion semantica para TurtleBot3 en ROS Noetic.
+    Enriquece el grafo topologico con informacion semantica (room/corridor/junction/narrow)
+    derivada del mapa geometrico 2D y planifica rutas con costes semanticos (A* semantico).
+  </description>
+
+  <maintainer email="alumno@uam.es">Robots Moviles - Master Robotica</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- ROS dependencies -->
+  <depend>rospy</depend>
+  <depend>actionlib</depend>
+  <depend>move_base_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <!-- Python dependencies (pip install) -->
+  <!-- numpy, opencv-python, pyyaml -->
+
+  <export>
+  </export>
+</package>

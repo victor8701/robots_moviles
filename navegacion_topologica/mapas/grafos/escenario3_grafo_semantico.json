@@ -1,0 +1,200 @@
+{
+  "nodes": [
+    {
+      "id": 0,
+      "x_pixel": 216,
+      "y_pixel": 94,
+      "distance_to_wall": 23.772096633911133,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 1,
+      "x_pixel": 204,
+      "y_pixel": 198,
+      "distance_to_wall": 20.0,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 2,
+      "x_pixel": 200,
+      "y_pixel": 237,
+      "distance_to_wall": 15.59379768371582,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 3,
+      "x_pixel": 243,
+      "y_pixel": 241,
+      "distance_to_wall": 15.184497833251953,
+      "semantic": {
+        "region_type": "junction",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "medium",
+        "traversal_cost": 1.2,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 4,
+      "x_pixel": 254,
+      "y_pixel": 111,
+      "distance_to_wall": 15.0,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 5,
+      "x_pixel": 199,
+      "y_pixel": 139,
+      "distance_to_wall": 14.796897888183594,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 6,
+      "x_pixel": 286,
+      "y_pixel": 216,
+      "distance_to_wall": 13.78449821472168,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 7,
+      "x_pixel": 244,
+      "y_pixel": 216,
+      "distance_to_wall": 13.0,
+      "semantic": {
+        "region_type": "junction",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "medium",
+        "traversal_cost": 1.2,
+        "nearby_regions": []
+      }
+    },
+    {
+      "id": 8,
+      "x_pixel": 257,
+      "y_pixel": 151,
+      "distance_to_wall": 13.0,
+      "semantic": {
+        "region_type": "corridor",
+        "traversability": 0.9,
+        "difficulty": "medium",
+        "risk_level": "low",
+        "traversal_cost": 1.0,
+        "nearby_regions": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from_node": 0,
+      "to_node": 4,
+      "distance_pixels": 41.6293165929973
+    },
+    {
+      "from_node": 0,
+      "to_node": 5,
+      "distance_pixels": 48.104053883222775
+    },
+    {
+      "from_node": 1,
+      "to_node": 2,
+      "distance_pixels": 39.20459156782532
+    },
+    {
+      "from_node": 1,
+      "to_node": 5,
+      "distance_pixels": 59.21148537234985
+    },
+    {
+      "from_node": 1,
+      "to_node": 6,
+      "distance_pixels": 83.95236744726142
+    },
+    {
+      "from_node": 1,
+      "to_node": 7,
+      "distance_pixels": 43.86342439892262
+    },
+    {
+      "from_node": 2,
+      "to_node": 3,
+      "distance_pixels": 43.18564576337837
+    },
+    {
+      "from_node": 2,
+      "to_node": 5,
+      "distance_pixels": 98.00510190801293
+    },
+    {
+      "from_node": 3,
+      "to_node": 7,
+      "distance_pixels": 25.019992006393608
+    },
+    {
+      "from_node": 4,
+      "to_node": 5,
+      "distance_pixels": 61.71709649683789
+    },
+    {
+      "from_node": 5,
+      "to_node": 8,
+      "distance_pixels": 59.22837157984339
+    },
+    {
+      "from_node": 6,
+      "to_node": 7,
+      "distance_pixels": 42.0
+    }
+  ],
+  "metadata": {
+    "map_image": "mapa_escenario3.pgm",
+    "resolution_m_per_pixel": 0.05,
+    "origin_x": -10.0,
+    "origin_y": -10.0,
+    "width": 384,
+    "height": 384
+  }
+}
