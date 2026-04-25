@@ -1,165 +1,152 @@
-# Robots Móviles — Segunda Entrega: Navegación Topológica y Semántica
+# Autonomous Navigation System for Mobile Robots
+### Topological and Semantic Navigation — Master's in Robotics & Automation
 
-Máster en Robótica y Automatización · Universidad de Zaragoza
+This project implements a **three-level navigation stack** for a TurtleBot3 in simulated environments (ROS Noetic + Gazebo). Each level builds on the previous one, progressively adding intelligence to how the robot understands and traverses its environment.
 
-Este repositorio implementa un sistema de navegación multinivel para TurtleBot3 en Gazebo/ROS Noetic:
+---
+
+## The three navigation levels
 
 ```
-Módulo 1 — Geométrico:   exploración autónoma por fronteras → mapa PGM
-Módulo 2 — Topológico:   PGM → grafo de nodos → A* entre nodos
-Módulo 3 — Semántico:    grafo + análisis 3D → costes semánticos → A* semántico
+┌─────────────────────────────────────────────────────────┐
+│  Level 3 — Semantic   "navigate to the nearest room"    │
+│     ↑ enriches with region types and traversal costs    │
+│  Level 2 — Topological  "go to node 6 via nodes 1, 7"  │
+│     ↑ built from                                        │
+│  Level 1 — Geometric  "avoid obstacles, map the space"  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Estructura del proyecto
+## Level 1 — Geometric: Autonomous Exploration
+
+The robot explores unknown environments autonomously using **Frontier-Based Exploration**: it continuously identifies the boundary between mapped and unknown space and navigates toward the nearest reachable frontier until the map is complete.
+
+**Results across 4 environments:**
+
+| Environment | Time | Coverage |
+|-------------|:----:|:--------:|
+| Scenario 1  | 3 min 09 s | 100.1 % |
+| Scenario 2  | 7 min 13 s | 99.8 %  |
+| Scenario 3  | 7 min 50 s | 91.6 %  |
+| Study       | 7 min 02 s | 99.9 %  |
+
+The resulting PGM maps feed directly into the topological layer.
+
+→ See [`navegacion_geometrica/`](navegacion_geometrica/README.md)
+
+---
+
+## Level 2 — Topological: Graph-Based Navigation
+
+The geometric map is transformed into a **topological graph** where nodes represent the most open points in free space and edges connect navigable regions. Path planning uses **A\*** with Euclidean distance as heuristic.
+
+**Pipeline (Scenario 3 — most complex, 9 nodes):**
+
+![Topological pipeline — Scenario 3](navegacion_topologica/mapas/memoria/escenario3_pipeline.png)
+
+*Left: free space mask. Centre: traversability map with skeleton. Right: topological graph (9 nodes, 12 edges) superimposed on the map.*
+
+**Study environment** (8 nodes, 19 edges — multi-room floor plan):
+
+![Topological pipeline — Study](navegacion_topologica/mapas/memoria/estudio_pipeline.png)
+
+**How nodes are placed:**
+1. Extract free-space mask from PGM (threshold > 220)
+2. Skeletonize with `scikit-image` morphological thinning
+3. Compute Distance Transform → local maxima = node positions (farthest from walls)
+4. Connect nodes within 100 px with line-of-sight check
+
+→ See [`navegacion_topologica/`](navegacion_topologica/README.md)
+
+---
+
+## Level 3 — Semantic: 3D Region Classification
+
+Each topological node is **classified by the volumetric properties of the space around it**, using a 3D projection of the 2D map data (`SemanticMapper3D`):
+
+- `distance_to_wall` (metres) → `width = dtw × 2`, `height = 2.5 m` (standard indoor ceiling)
+- `SemanticMapper3D._classify_region(width, height, volume)` applies 3D thresholds
+- Ray-casting distinguishes `junction` (corridor open in ≥ 3 directions) from `corridor`
+
+| Label | Width | Traversal cost | Risk |
+|-------|:-----:|:--------------:|:----:|
+| `room`     | ≥ 2.0 m | 0.70 | low    |
+| `corridor` | 0.8–2.0 m | 1.00 | low  |
+| `junction` | 0.8–2.0 m + open dirs | 1.20 | medium |
+| `narrow`   | < 0.8 m | 1.80 | high  |
+
+**Semantic map — Scenario 3** (🟢 room · 🟣 junction):
+
+![Semantic pipeline — Scenario 3](navegacion_semantica/resultados/escenario3_pipeline_semantico.png)
+
+*Left: raw geometric map. Right: semantic-topological graph — green nodes are rooms (free, wide), purple nodes are junctions (crossings).*
+
+### Semantic routing vs. topological routing
+
+The semantic A\* assigns different edge costs based on node type, producing **genuinely different routes** in 8 of the 36 possible node pairs in Scenario 3. The most striking example:
+
+![Route comparison — Scenario 3, nodes 2→6](navegacion_semantica/resultados/escenario3_comparacion_rutas.png)
+
+| | Route | Distance | Semantic cost |
+|--|-------|:--------:|:-------------:|
+| 🔵 Topological | `2 → 3 → 7 → 6` | 5.51 m | 4.8 (all junctions) |
+| 🟢 Semantic    | `2 → 1 → 6`     | 6.16 m | 3.1 (via room)      |
+
+The semantic planner accepts +0.65 m in exchange for passing through a room node (cost 0.70) instead of two junction nodes (cost 1.20 each), reducing total semantic cost by **−1.70**.
+
+→ See [`navegacion_semantica/`](navegacion_semantica/README.md) · Full simulation guide: [`SIMULACION.md`](navegacion_semantica/SIMULACION.md)
+
+---
+
+## Technologies
+
+`ROS Noetic` · `Gazebo` · `Python 3.8` · `OpenCV` · `scikit-image` · `NumPy/SciPy` · `TurtleBot3`
+
+---
+
+## Quick start
+
+```bash
+# 1. Install Python dependencies
+pip install pyyaml opencv-python scikit-image numpy scipy
+
+# 2. Build workspace
+cd ~/Ubuntu20noetic_ws && catkin_make && source devel/setup.bash
+
+# 3. Generate all topological graphs
+cd $(rospack find navegacion_topologica)/scripts && python3 generate_all_maps.py
+
+# 4. Generate semantic graphs + figures
+cd $(rospack find navegacion_semantica)
+python3 semantic_enricher.py && python3 generate_semantic_results.py
+```
+
+**Run the full semantic navigation demo (Scenario 3):**
+
+```bash
+# T1 — Gazebo
+export TURTLEBOT3_MODEL=burger
+roslaunch navegacion_geometrica turtlebot3_escenario3.launch
+
+# T2 — Navigation stack
+roslaunch turtlebot3_navigation turtlebot3_navigation.launch \
+  map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario3.yaml
+
+# T3 — Semantic navigation node
+rosrun navegacion_semantica semantic_navigation.py \
+  $(rospack find navegacion_topologica)/mapas/grafos/escenario3_grafo_semantico.json
+```
+
+---
+
+## Repository structure
 
 ```
 robots_moviles/
-├── navegacion_geometrica/     # Exploración autónoma + evaluación cobertura
-├── navegacion_topologica/     # Generación de grafos + A* + nodo ROS
-├── navegacion_semantica/      # Clasificación 3D + A* semántico + nodo ROS
-├── SLAM/                      # Práctica EKF-SLAM en MATLAB (independiente)
-└── doc/                       # Diapositivas del trabajo
-```
-
----
-
-## Entornos disponibles
-
-| Entorno | Complejidad | Nodos | Aristas | Escena |
-|---------|:-----------:|------:|--------:|--------|
-| escenario1 | Baja  |  3 |  3 | Sala rectangular simple |
-| escenario2 | Media |  8 | 14 | Pasillos en L con salas |
-| escenario3 | Alta  |  9 | 12 | Red de pasillos estrechos |
-| estudio    | Media |  8 | 19 | Planta con varias habitaciones |
-
-**El escenario recomendado para el vídeo es escenario3** (el más complejo, con rutas topológica y semántica claramente distintas).
-
----
-
-## Inicio rápido
-
-### 1. Instalar dependencias Python
-
-```bash
-pip install pyyaml opencv-python scikit-image numpy scipy
-```
-
-### 2. Compilar el workspace
-
-```bash
-cd ~/Ubuntu20noetic_ws
-catkin_make
-source devel/setup.bash
-```
-
-### 3. Generar todos los grafos (topológicos y semánticos)
-
-```bash
-# Grafos topológicos
-cd $(rospack find navegacion_topologica)/scripts
-python3 generate_all_maps.py
-
-# Grafos semánticos + figuras para la memoria
-cd $(rospack find navegacion_semantica)
-python3 semantic_enricher.py
-python3 generate_semantic_results.py
-```
-
----
-
-## Guía de simulación por módulo
-
-| Módulo | Guía detallada |
-|--------|---------------|
-| Navegación geométrica | [navegacion_geometrica/README.md](navegacion_geometrica/README.md) |
-| Navegación topológica | [navegacion_topologica/README.md](navegacion_topologica/README.md) |
-| Navegación semántica | [navegacion_semantica/SIMULACION.md](navegacion_semantica/SIMULACION.md) |
-
----
-
-## Simulación rápida — escenario3 completo
-
-Abre **4 terminales**. En cada una, hacer antes:
-
-```bash
-source /opt/ros/noetic/setup.bash && source ~/Ubuntu20noetic_ws/devel/setup.bash && export TURTLEBOT3_MODEL=burger
-```
-
-| Terminal | Comando |
-|----------|---------|
-| **1 — Gazebo** | `roslaunch navegacion_geometrica turtlebot3_escenario3.launch` |
-| **2 — Nav stack** | `roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=$(rospack find navegacion_geometrica)/mapas/exploration/mapa_escenario3.yaml` |
-| **3 — Topológica** | `rosrun navegacion_topologica topological_navigation.py $(rospack find navegacion_topologica)/mapas/grafos/escenario3_grafo.json` |
-| **4 — Semántica** | `rosrun navegacion_semantica semantic_navigation.py $(rospack find navegacion_topologica)/mapas/grafos/escenario3_grafo_semantico.json` |
-
-> Solo lanzar **terminal 3 o 4**, no las dos a la vez (ambas usan `move_base`).
-
----
-
-## Configurar RViz para el vídeo
-
-Añadir en RViz:
-
-| Topic | Tipo | Para |
-|-------|------|------|
-| `/map` | Map | Mapa de navegación |
-| `/semantic_markers` | MarkerArray | Esferas de colores (módulo semántico) |
-| `/semantic_path` | Path | Ruta planificada semántica |
-| `/move_base/local_costmap/costmap` | Map | Costmap local |
-
----
-
-## Demostración clave para el vídeo (semántica)
-
-El par **nodo 2 → nodo 6** en escenario3 muestra rutas completamente distintas:
-
-```
-🔵 Topológica: [2 → 3 → 7 → 6]  — 5.51 m, todo cruces, coste sem. 4.8
-🟢 Semántica:  [2 → 1 → 6]       — 6.16 m, pasa por habitación, coste sem. 3.1
-```
-
-La semántica elige una ruta 0.65 m más larga pero que pasa por una habitación (coste 0.70) evitando dos cruces (coste 1.20 cada uno). Resultado: −1.70 unidades de coste semántico.
-
----
-
-## Archivos de resultados para la memoria
-
-Todos los archivos necesarios para la memoria se generan automáticamente:
-
-```
-navegacion_topologica/mapas/
-├── topologicos/
-│   ├── escenario{1,2,3}_topologico.png   # Grafo sobre el mapa
-│   └── estudio_topologico.png
-└── memoria/
-    └── escenario{1,2,3}_memoria.png      # Figuras de 3 paneles
-
-navegacion_semantica/resultados/
-├── escenario{1,2,3}_semantico.png        # Mapa coloreado por tipo de región
-├── escenario{1,2,3}_pipeline_semantico.png  # Mapa geo vs. semántico
-├── escenario{1,2,3}_comparacion_rutas.png   # Ruta topo vs. semántica
-└── tabla_resultados.md                   # Tabla lista para copiar en la memoria
-```
-
----
-
-## Troubleshooting
-
-| Problema | Solución |
-|---------|---------|
-| `ModuleNotFoundError: yaml` | `pip install pyyaml` |
-| `ModuleNotFoundError: skimage` | `pip install scikit-image` |
-| `move_base no disponible` | `sudo apt install ros-noetic-turtlebot3-navigation` |
-| Grafo semántico no encontrado | Ejecutar `python3 semantic_enricher.py` primero |
-| El robot no se mueve | Verificar que `/amcl` y `/move_base` están activos: `rosnode list` |
-| RViz no muestra markers | Pulsar `m` en el terminal de navegación semántica para republicar |
-
----
-
-## Rama de entrega
-
-```
-git checkout entrega_individual_topo_sem
+├── navegacion_geometrica/    # Frontier exploration + coverage evaluation
+├── navegacion_topologica/    # Graph generation + A* path planner + ROS node
+├── navegacion_semantica/     # 3D region classification + semantic A* + ROS node
+└── SLAM/                     # EKF-SLAM implementation in MATLAB (separate task)
 ```
