@@ -244,27 +244,77 @@ class SemanticMapper3D:
 
         return self.regions
 
-    def _classify_region(self, width: float, height: float, volume: float) -> str:
+    @staticmethod
+    def _classify_region(width: float, height: float, volume: float) -> str:
         """
-        Clasifica tipo de región basado en dimensiones.
+        Clasifica el tipo de región 3D según sus dimensiones métricas.
 
-        Heurística simple:
-        - Altura > 2m y ancho < 3m: Corredor
-        - Altura < 1m: Suelo/obstáculo bajo
-        - Altura > 2m y ancho > 3m: Habitación
+        Umbrales calibrados para interiores de robots móviles (TurtleBot3):
+          - width  = diámetro del espacio libre en el plano horizontal (m)
+          - height = altura estimada del espacio (m)
+          - volume = aproximación del volumen libre (m³)
+
+        Rangos típicos en nuestros entornos (resolución 0.05 m/px):
+          Pasillos/cruces:  width  0.6 – 1.9 m  (dtw  0.3 – 0.95 m)
+          Habitaciones:     width  2.0 – 3.1 m  (dtw  1.0 – 1.55 m)
+          Grandes salas:    width > 3.0 m        (dtw > 1.5 m)
         """
         if height < 0.5:
             return "floor"
-        elif width < 1.0 and height > 1.5:
+        elif width < 0.8 and height > 1.5:
             return "wall"
-        elif width < 3.0 and height > 1.5:
+        elif width < 2.0 and height > 1.5:
             return "corridor"
-        elif width > 3.0 and height > 1.5:
+        elif width >= 2.0 and width < 3.0 and height > 1.5:
             return "room"
-        elif width > 3.0 and height > 2.0:
+        elif width >= 3.0 and height > 1.5:
             return "large_room"
         else:
             return "obstacle"
+
+    @classmethod
+    def classify_node_from_map(cls,
+                               distance_to_wall_m: float,
+                               n_open_directions: int,
+                               room_height_m: float = 2.5) -> str:
+        """
+        Clasifica un nodo topológico con lógica 3D a partir de datos del mapa 2D.
+
+        Proyecta la información geométrica 2D (distancia a pared, número de
+        direcciones abiertas) al espacio 3D asumiendo altura interior estándar,
+        replicando la clasificación volumétrica que haría SemanticMapper3D
+        sobre una nube de puntos real.
+
+        Args:
+            distance_to_wall_m:  Radio del espacio libre (m), del mapa de distancias.
+            n_open_directions:   Número de direcciones cardinales con paso libre
+                                 (obtenido por ray-casting sobre el PGM).
+            room_height_m:       Altura estimada del techo (m). Por defecto 2.5 m.
+
+        Returns:
+            Etiqueta semántica topológica: "room" | "corridor" | "junction" | "narrow"
+        """
+        width  = distance_to_wall_m * 2.0          # diámetro del espacio libre
+        volume = width * room_height_m * width      # aproximación cúbica
+
+        label_3d = cls._classify_region(width, room_height_m, volume)
+
+        # Mapeo de etiquetas 3D a etiquetas topológicas
+        topo_label_map = {
+            "large_room": "room",
+            "room":       "room",
+            "corridor":   "corridor",
+            "floor":      "narrow",
+            "wall":       "narrow",
+            "obstacle":   "narrow",
+        }
+        topo_label = topo_label_map.get(label_3d, "junction")
+
+        # Refinamiento topológico: corredor abierto en ≥3 direcciones → junction
+        if topo_label == "corridor" and n_open_directions >= 3:
+            topo_label = "junction"
+
+        return topo_label
 
     def assign_traversability(self):
         """Asigna atributo de transitabilidad a regiones."""

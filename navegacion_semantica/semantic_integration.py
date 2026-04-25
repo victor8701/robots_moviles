@@ -18,15 +18,21 @@ import os
 import sys
 from typing import Dict, List, Optional, Tuple
 
+# Clasificador 3D de regiones — fuente de verdad para la semántica
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _SCRIPT_DIR)
+from semantic_mapper_3d import SemanticMapper3D
+
 
 # ---------------------------------------------------------------------------
 # Constantes de clasificacion
 # ---------------------------------------------------------------------------
 
-# Umbrales en PIXELES (resolucion tipica 0.05 m/px -> 1m = 20px)
-ROOM_MIN_DIST_WALL    = 20   # >1.0 m de pared -> habitacion
-CORRIDOR_MIN_DIST     = 10   # 0.5-1.0 m -> corredor
-# Por debajo de CORRIDOR_MIN_DIST -> zona estrecha/junction
+# Resolución típica de los mapas ROS generados con gmapping
+DEFAULT_RESOLUTION_M_PX = 0.05   # metros por pixel
+
+# Umbral ray-casting: número mínimo de px libres para considerar dirección abierta
+CORRIDOR_MIN_DIST = 10            # 10 px = 0.5 m
 
 # Costes de traversal por tipo de region (multiplicador sobre distancia)
 TRAVERSAL_COST = {
@@ -104,41 +110,48 @@ def _ray_cast(free_mask: np.ndarray, x: int, y: int,
 
 def classify_node_geometry(free_mask: np.ndarray,
                            x_pixel: int, y_pixel: int,
-                           distance_to_wall: float) -> str:
+                           distance_to_wall: float,
+                           resolution_m_px: float = DEFAULT_RESOLUTION_M_PX) -> str:
     """
-    Clasifica un nodo del grafo topologico.
+    Clasifica un nodo del grafo topológico usando SemanticMapper3D.
 
-    Criterio principal: distancia a la pared mas cercana (distance_to_wall),
-    ya calculada por el topological_mapper como maximo local de la
-    Transformada de Distancia. Refleja directamente la amplitud del espacio.
+    Proyecta los datos 2D del mapa (distancia a pared en píxeles y número
+    de direcciones libres por ray-casting) al espacio 3D y delega la
+    clasificación volumétrica en SemanticMapper3D.classify_node_from_map().
 
-    El ray-casting se usa SOLO para distinguir junction (cruce) de corridor.
+    Flujo:
+      1. Convierte distance_to_wall de píxeles a metros.
+      2. Ray-casting cardinal para contar direcciones abiertas.
+      3. Llama a SemanticMapper3D que razona con width/height/volume 3D.
+
+    Args:
+        free_mask:        Máscara binaria de espacio libre (del PGM).
+        x_pixel, y_pixel: Coordenadas del nodo en píxeles.
+        distance_to_wall: Radio del espacio libre en píxeles
+                          (máximo local de la Transformada de Distancia).
+        resolution_m_px:  Resolución del mapa en m/px (por defecto 0.05).
 
     Returns:
-        Etiqueta semantica: "room" | "corridor" | "junction" | "narrow"
+        Etiqueta semántica: "room" | "corridor" | "junction" | "narrow"
     """
-    # 1. ROOM: nodo con gran separacion de paredes -> espacio abierto/amplio
-    #    ROOM_MIN_DIST_WALL px = ROOM_MIN_DIST_WALL * 0.05 m
-    if distance_to_wall >= ROOM_MIN_DIST_WALL:
-        return "room"
+    # Convertir distancia a metros para el razonamiento volumétrico 3D
+    distance_to_wall_m = distance_to_wall * resolution_m_px
 
-    # 2. Para nodos menos espaciosos: ray-casting para junction vs corridor
+    # Ray-casting cardinal: cuenta cuántas direcciones están abiertas
+    n_open = 0
     if free_mask is not None:
         directions_cardinal = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-        cardinal_dists = [
-            _ray_cast(free_mask, x_pixel, y_pixel, d) for d in directions_cardinal
-        ]
-        # junction: abierto en 3+ direcciones cardinales (es un cruce)
-        open_corridor = sum(1 for d in cardinal_dists if d >= CORRIDOR_MIN_DIST)
-        if open_corridor >= 3:
-            return "junction"
+        n_open = sum(
+            1 for d in directions_cardinal
+            if _ray_cast(free_mask, x_pixel, y_pixel, d) >= CORRIDOR_MIN_DIST
+        )
 
-    # 3. CORRIDOR: distancia a pared suficiente para navegar
-    if distance_to_wall >= CORRIDOR_MIN_DIST:
-        return "corridor"
-
-    # 4. NARROW: zona muy estrecha
-    return "narrow"
+    # Clasificación volumétrica 3D: SemanticMapper3D razona con
+    # width = distance_to_wall_m * 2, height = 2.5 m (altura interior estándar)
+    return SemanticMapper3D.classify_node_from_map(
+        distance_to_wall_m=distance_to_wall_m,
+        n_open_directions=n_open,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -189,21 +202,24 @@ class SemanticTopologicalIntegration:
     # -----------------------------------------------------------------------
 
     def _assign_semantic_attributes(self):
-        """Asigna atributos semanticos a cada nodo topologico."""
+        """Asigna atributos semanticos a cada nodo topologico via SemanticMapper3D."""
+        res = self.topo_graph['metadata'].get('resolution_m_per_pixel',
+                                               DEFAULT_RESOLUTION_M_PX)
         for node in self.topo_graph['nodes']:
             if self.semantic_regions:
-                # Prioridad: regiones 3D externas
+                # Prioridad: regiones 3D externas cargadas desde JSON
                 nearest = self._find_nearest_semantic_region(node)
                 if nearest:
                     node['semantic'] = self._extract_semantic_attributes_3d(nearest)
                     continue
 
-            # Clasificacion geometrica 2D desde el mapa PGM
+            # Clasificacion 3D via SemanticMapper3D (proyeccion 2D→3D)
             region_type = classify_node_geometry(
                 self.free_mask,
                 node['x_pixel'],
                 node['y_pixel'],
-                node.get('distance_to_wall', 0.0)
+                node.get('distance_to_wall', 0.0),
+                resolution_m_px=res,
             )
             node['semantic'] = self._build_semantic_dict(region_type)
 
