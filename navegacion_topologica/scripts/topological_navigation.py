@@ -56,9 +56,9 @@ class TopologicalNavigator:
         # Cliente de acciones move_base
         rospy.loginfo("Esperando move_base...")
         self.move_base_client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-        connected = self.move_base_client.wait_for_server(rospy.Duration(30.0))
+        connected = self.move_base_client.wait_for_server(rospy.Duration(60.0))
         if not connected:
-            rospy.logerr("move_base no disponible tras 30s. Comprueba que la navegacion esta activa.")
+            rospy.logerr("move_base no disponible tras 60s. Comprueba que la navegacion esta activa.")
             sys.exit(1)
 
         rospy.loginfo("Navegador topologico inicializado")
