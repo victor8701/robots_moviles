@@ -43,10 +43,11 @@ def recortar(img, bbox):
     return img[y0:y1, x0:x1]
 
 
-def dibujar_grafo(mapper, node_offset=(0, 0)):
+def dibujar_grafo(mapper):
     """Panel 3: mapa original + esqueleto + grafo."""
-    ox, oy = node_offset
+    # Quitamos el offset, dibujamos directamente sobre la imagen original
     vis = cv2.cvtColor(mapper.map_image, cv2.COLOR_GRAY2BGR)
+    
     # Esqueleto en verde claro
     skel_mask = mapper.thin_skeleton > 0
     vis[skel_mask] = [100, 220, 100]
@@ -55,14 +56,16 @@ def dibujar_grafo(mapper, node_offset=(0, 0)):
     for edge in mapper.edges:
         n1 = mapper.nodes[edge['from_node']]
         n2 = mapper.nodes[edge['to_node']]
-        x1, y1 = n1['x_pixel'] - ox, n1['y_pixel'] - oy
-        x2, y2 = n2['x_pixel'] - ox, n2['y_pixel'] - oy
+        # Usamos las coordenadas exactas del nodo
+        x1, y1 = n1['x_pixel'], n1['y_pixel']
+        x2, y2 = n2['x_pixel'], n2['y_pixel']
         cv2.line(vis, (x1, y1), (x2, y2), (0, 0, 200), 2)
 
     # Nodos en azul con ID
     for node in mapper.nodes:
-        x = node['x_pixel'] - ox
-        y = node['y_pixel'] - oy
+        # Usamos las coordenadas exactas del nodo
+        x = node['x_pixel']
+        y = node['y_pixel']
         cv2.circle(vis, (x, y), 6, (200, 50, 0), -1)
         cv2.circle(vis, (x, y), 6, (255, 255, 255), 1)
         cv2.putText(vis, str(node['id']), (x + 7, y - 3),
@@ -100,16 +103,31 @@ def procesar(entorno):
     p2 = recortar(p2, bbox)
 
     # --- Panel 3: mapa topologico ---
-    p3 = dibujar_grafo(mapper, node_offset=(x0, y0))
+    p3 = dibujar_grafo(mapper)
     p3 = recortar(p3, bbox)
 
-    # --- Etiquetas ---
+# --- Etiquetas ---
     def label(img, text):
         out = img.copy()
-        cv2.putText(out, text, (5, 18),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 3)
-        cv2.putText(out, text, (5, 18),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        escala = 0.55
+        grosor_blanco = 1
+        
+        # 1. Calcular en píxeles cuánto va a ocupar el texto
+        (ancho_texto, alto_texto), baseline = cv2.getTextSize(text, font, escala, grosor_blanco)
+        
+        # 2. Si el texto es más ancho que la imagen, añadimos padding a la derecha
+        margen = 10
+        if ancho_texto + margen > out.shape[1]:
+            extra_w = (ancho_texto + margen) - out.shape[1]
+            # Rellenamos con un gris claro (similar a la zona desconocida del mapa)
+            out = cv2.copyMakeBorder(out, 0, 0, 0, extra_w, 
+                                     cv2.BORDER_CONSTANT, value=(205, 205, 205))
+            
+        # 3. Escribir el texto (borde negro para contraste y relleno blanco)
+        cv2.putText(out, text, (5, 18), font, escala, (0, 0, 0), 3)
+        cv2.putText(out, text, (5, 18), font, escala, (255, 255, 255), grosor_blanco)
+        
         return out
 
     p1 = label(p1, 'Espacio libre')
@@ -130,15 +148,33 @@ def procesar(entorno):
     sep = np.full((th, 4, 3), 80, dtype=np.uint8)
     panel = np.concatenate([p1, sep, p2, sep, p3], axis=1)
 
-    # Titulo del entorno
+# --- Titulo del entorno ---
     title_h = 28
-    title = np.full((title_h, panel.shape[1], 3), 40, dtype=np.uint8)
     txt = f'Entorno: {entorno.upper()}   |   '
     res = mapper.graph['metadata']['resolution_m_per_pixel']
     txt += f'Resolucion: {res} m/px   |   '
     txt += f'Nodos: {len(mapper.nodes)}   |   Aristas: {len(mapper.edges)}'
-    cv2.putText(title, txt, (6, 19),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.48, (200, 200, 200), 1)
+
+    font_title = cv2.FONT_HERSHEY_SIMPLEX
+    scale_title = 0.48
+    thick_title = 1
+
+    # 1. Calculamos el ancho real del texto del encabezado
+    (ancho_txt, alto_txt), _ = cv2.getTextSize(txt, font_title, scale_title, thick_title)
+    margen_titulo = 15
+
+    # 2. Si el texto es más ancho que la suma de los 3 paneles, ensanchamos el panel base
+    if ancho_txt + margen_titulo > panel.shape[1]:
+        extra_w = (ancho_txt + margen_titulo) - panel.shape[1]
+        # Añadimos un borde a la derecha (puedes cambiar el color si prefieres que no sea gris)
+        panel = cv2.copyMakeBorder(panel, 0, 0, 0, extra_w, 
+                                   cv2.BORDER_CONSTANT, value=(205, 205, 205))
+
+    # 3. Creamos la barra del título con el ancho final del panel y escribimos el texto
+    title = np.full((title_h, panel.shape[1], 3), 40, dtype=np.uint8)
+    cv2.putText(title, txt, (6, 19), font_title, scale_title, (200, 200, 200), thick_title)
+    
+    # 4. Concatenamos el título arriba del panel
     panel = np.concatenate([title, panel], axis=0)
 
     out_path = os.path.join(MEM_DIR, f'{entorno}_pipeline.png')
@@ -153,7 +189,6 @@ def procesar(entorno):
         'edges': mapper.edges,
         'meta': mapper.graph['metadata'],
     }
-
 
 def tabla_memoria(resultados):
     print('\n' + '=' * 70)
